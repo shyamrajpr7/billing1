@@ -1,10 +1,12 @@
 package com.shop.ai;
 
 import com.shop.dao.CustomerDAO;
+import com.shop.dao.ExpenseDAO;
 import com.shop.dao.ProductDAO;
 import com.shop.dao.SaleDAO;
 import com.shop.dao.UserDAO;
 import com.shop.model.Customer;
+import com.shop.model.Expense;
 import com.shop.model.Product;
 import com.shop.model.Sale;
 import com.shop.model.SaleItem;
@@ -38,6 +40,7 @@ public class CommandAssistant {
 
     private final ProductDAO productDAO = new ProductDAO();
     private final CustomerDAO customerDAO = new CustomerDAO();
+    private final ExpenseDAO expenseDAO = new ExpenseDAO();
     private final SaleDAO saleDAO = new SaleDAO();
     private final UserDAO userDAO = new UserDAO();
 
@@ -103,6 +106,9 @@ public class CommandAssistant {
             if (reply != null) return reply;
 
             reply = handleCustomers(lower, text);
+            if (reply != null) return reply;
+
+            reply = handleExpenses(lower, text);
             if (reply != null) return reply;
 
             reply = handleCart(lower, text);
@@ -189,6 +195,8 @@ public class CommandAssistant {
         if (reply != null) return reply;
         reply = handleCustomers(lower, text);
         if (reply != null) return reply;
+        reply = handleExpenses(lower, text);
+        if (reply != null) return reply;
         reply = handleCart(lower, text);
         if (reply != null) return reply;
         return null;
@@ -203,6 +211,8 @@ public class CommandAssistant {
                 + "\"delete product <name>\", \"check stock of <name>\", \"low stock\"\n"
                 + "- Customers: \"add customer <name>\" (optional \"phone <n>\", \"email <e>\"), "
                 + "\"search customer <name>\", \"how many customers\"\n"
+                + "- Expenses: \"add expense <description> <amount>\", \"today's expenses\", "
+                + "\"this month's expenses\", \"today's profit\", \"this month's profit\"\n"
                 + "- Sales: \"add <name> to cart\", \"add <qty> <name> to cart\", \"remove <name> from cart\", "
                 + "\"show cart\", \"clear cart\", \"pay by cash/card/upi/net banking\", \"checkout\"\n"
                 + "- Reports: \"today's revenue\", \"revenue this month\", \"sales today\", \"total sales\", "
@@ -215,6 +225,9 @@ public class CommandAssistant {
                 + "- \"how many products / how many items\" → <<total products>>\n"
                 + "- \"how many customers\" → <<how many customers>>\n"
                 + "- \"which items are low on stock\" → <<low stock>>\n"
+                + "- \"today's expenses / how much did we spend today\" → <<today's expenses>>\n"
+                + "- \"today's profit / are we making money today\" → <<today's profit>>\n"
+                + "- \"record an expense\" → <<add expense <description> <amount>>>\n"
                 + "Rules:\n"
                 + "1. If the user asks about the shop's own data (sales, revenue, transactions, products, stock, "
                 + "customers) in ANY wording, reply with ONLY the matching command wrapped in double angle brackets, "
@@ -259,6 +272,10 @@ public class CommandAssistant {
         if (matchesAny(lower, "open reports", "open sales report", "go to reports", "open analytics", "go to sales and analytics")) {
             navigate("Sales & Reports", () -> new com.shop.view.ReportsView().getView());
             return "Opening Sales & Reports.";
+        }
+        if (matchesAny(lower, "open expenses", "go to expenses", "expense management", "open expense", "show expenses")) {
+            navigate("Expense Management", () -> new com.shop.view.ExpensesView().getView());
+            return "Opening Expenses & Profit.";
         }
         if (matchesAny(lower, "open employees", "go to employees", "open employee directory", "go to employee directory")) {
             navigate("Employee Management", () -> new com.shop.view.EmployeeView().getView());
@@ -455,6 +472,76 @@ public class CommandAssistant {
             }
         }
         return null;
+    }
+
+    // ----------------------------------------------------------------
+    // Expenses & profit
+    // ----------------------------------------------------------------
+    private String handleExpenses(String lower, String text) {
+        if (matchesAny(lower, "today's expenses", "today expenses", "expenses today", "how much did we spend today",
+                "how much we spent today", "spent today", "today spending", "today's spending")) {
+            return "Today's expenses are ₹" + String.format("%.2f", expenseDAO.getTotalToday()) + ".";
+        }
+        if (matchesAny(lower, "this month's expenses", "this month expenses", "expenses this month",
+                "monthly expenses", "how much did we spend this month", "spent this month")) {
+            return "This month's expenses are ₹" + String.format("%.2f", expenseDAO.getTotalThisMonth()) + ".";
+        }
+        if (matchesAny(lower, "today's profit", "profit today", "today profit", "how much profit today",
+                "how much did we profit today", "did we make a profit", "today's earning after expenses")) {
+            double profit = saleDAO.getTotalRevenueToday() - expenseDAO.getTotalToday();
+            return "Today's profit is ₹" + String.format("%.2f", profit)
+                    + (profit >= 0 ? " (revenue ₹" + String.format("%.2f", saleDAO.getTotalRevenueToday())
+                    + " − expenses ₹" + String.format("%.2f", expenseDAO.getTotalToday()) + ")."
+                    : " — that's a loss (revenue ₹" + String.format("%.2f", saleDAO.getTotalRevenueToday())
+                    + " − expenses ₹" + String.format("%.2f", expenseDAO.getTotalToday()) + ").");
+        }
+        if (matchesAny(lower, "this month's profit", "monthly profit", "profit this month",
+                "how much profit this month")) {
+            double profit = saleDAO.getTotalRevenueThisMonth() - expenseDAO.getTotalThisMonth();
+            return "This month's profit is ₹" + String.format("%.2f", profit)
+                    + (profit >= 0 ? " (revenue ₹" + String.format("%.2f", saleDAO.getTotalRevenueThisMonth())
+                    + " − expenses ₹" + String.format("%.2f", expenseDAO.getTotalThisMonth()) + ")."
+                    : " — that's a loss (revenue ₹" + String.format("%.2f", saleDAO.getTotalRevenueThisMonth())
+                    + " − expenses ₹" + String.format("%.2f", expenseDAO.getTotalThisMonth()) + ").");
+        }
+        if (lower.startsWith("add expense ") || lower.startsWith("log expense ") || lower.startsWith("record expense ")) {
+            return addExpense(text);
+        }
+        return null;
+    }
+
+    private String addExpense(String text) {
+        String body = text.replaceFirst("(?i)(add|log|record) expense ", "").trim();
+        Matcher amountMatcher = Pattern.compile("(\\d+(?:\\.\\d+)?)").matcher(body);
+        if (!amountMatcher.find()) {
+            return "Please say the amount too, like \"add expense electricity 500\".";
+        }
+        double amount = Double.parseDouble(amountMatcher.group(1));
+        String description = body.substring(0, amountMatcher.start())
+                .replaceAll("[\\s,:;-]+$", "").trim();
+        String category = "General";
+        Matcher catMatcher = Pattern.compile("(?:for|category)\\s+([a-zA-Z ]+)",
+                Pattern.CASE_INSENSITIVE).matcher(body);
+        if (catMatcher.find()) {
+            category = catMatcher.group(1).trim();
+            description = description.replaceFirst("(?i)" + Pattern.quote(catMatcher.group(0).trim()), "").trim();
+        }
+        if (description.isEmpty()) {
+            description = "Expense " + category;
+        }
+
+        Expense expense = new Expense();
+        expense.setDescription(description);
+        expense.setCategory(category);
+        expense.setAmount(amount);
+        expense.setUserId(SessionManager.getInstance().getCurrentUser() != null
+                ? SessionManager.getInstance().getCurrentUser().getId() : 0);
+        boolean ok = expenseDAO.insert(expense);
+        if (!ok) return "Sorry, I could not record the expense.";
+        refresh();
+        return "Recorded expense \"" + description + "\" (₹" + String.format("%.2f", amount)
+                + ") under " + category + ". Today's expenses are now ₹"
+                + String.format("%.2f", expenseDAO.getTotalToday()) + ".";
     }
 
     // ----------------------------------------------------------------

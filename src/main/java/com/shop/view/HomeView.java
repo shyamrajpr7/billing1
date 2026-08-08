@@ -20,6 +20,7 @@ public class HomeView {
     private final SaleDAO saleDAO = new SaleDAO();
     private final CustomerDAO customerDAO = new CustomerDAO();
     private final UserDAO userDAO = new UserDAO();
+    private final ExpenseDAO expenseDAO = new ExpenseDAO();
     private final User currentUser = SessionManager.getInstance().getCurrentUser();
 
     public HomeView(DashboardView parent) {
@@ -38,19 +39,23 @@ public class HomeView {
         subtitleLabel.getStyleClass().add("sub-label");
         VBox topBox = new VBox(4, welcomeLabel, subtitleLabel);
 
-        // Stat Cards Grid
-        HBox statsGrid = new HBox(16);
+        // Stat Cards Grid (wraps as needed)
+        FlowPane statsGrid = new FlowPane(16, 16);
 
-        VBox revenueCard = createStatCard("💵", String.format("₹%.2f", saleDAO.getTotalRevenueToday()), "Today's Revenue", "text-accent");
+        double todayRevenue = saleDAO.getTotalRevenueToday();
+        double todayExpense = expenseDAO.getTotalToday();
+        double todayProfit = todayRevenue - todayExpense;
+
+        VBox revenueCard = createStatCard("💵", String.format("₹%.2f", todayRevenue), "Today's Revenue", "text-accent");
+        VBox profitCard = createStatCard("📈", String.format("₹%.2f", todayProfit), "Today's Profit", todayProfit >= 0 ? "text-accent" : "text-danger");
         VBox salesCard = createStatCard("🛒", String.valueOf(saleDAO.getSalesCountToday()), "Transactions Today", "text-white");
         VBox productsCard = createStatCard("📦", String.valueOf(productDAO.count()), "Total Products", "text-white");
         VBox lowStockCard = createStatCard("⚠️", String.valueOf(productDAO.countLowStock()), "Low Stock Alerts", "text-warning");
 
-        statsGrid.getChildren().addAll(revenueCard, salesCard, productsCard, lowStockCard);
-        HBox.setHgrow(revenueCard, Priority.ALWAYS);
-        HBox.setHgrow(salesCard, Priority.ALWAYS);
-        HBox.setHgrow(productsCard, Priority.ALWAYS);
-        HBox.setHgrow(lowStockCard, Priority.ALWAYS);
+        for (VBox card : List.of(revenueCard, profitCard, salesCard, productsCard, lowStockCard)) {
+            card.setPrefWidth(175);
+            statsGrid.getChildren().add(card);
+        }
 
         // Quick Actions Bar
         VBox quickActionsCard = new VBox(14);
@@ -72,7 +77,11 @@ public class HomeView {
         addCustomerBtn.getStyleClass().add("btn-secondary");
         addCustomerBtn.setOnAction(e -> parent.loadView("Customer Management", new CustomerView().getView()));
 
-        qaButtons.getChildren().addAll(posBtn, addProductBtn, addCustomerBtn);
+        Button addExpenseBtn = new Button("💰  Add Expense");
+        addExpenseBtn.getStyleClass().add("btn-secondary");
+        addExpenseBtn.setOnAction(e -> parent.loadView("Expense Management", new ExpensesView().getView()));
+
+        qaButtons.getChildren().addAll(posBtn, addProductBtn, addCustomerBtn, addExpenseBtn);
         quickActionsCard.getChildren().addAll(qaTitle, qaButtons);
 
         // Low Stock Table Section
