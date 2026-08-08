@@ -3,6 +3,7 @@ package com.shop.view;
 import com.shop.dao.ExpenseDAO;
 import com.shop.dao.SaleDAO;
 import com.shop.model.Expense;
+import com.shop.util.ReportExporter;
 import com.shop.util.SessionManager;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -14,8 +15,12 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.stage.FileChooser;
 
+import java.io.File;
+import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -73,6 +78,18 @@ public class ExpensesView {
 
         addRow.getChildren().addAll(descField, categoryCombo, amountField, datePicker, addBtn);
 
+        HBox exportRow = new HBox(10);
+        exportRow.setAlignment(Pos.CENTER_LEFT);
+        Button csvBtn = new Button("⬇️ Export CSV");
+        csvBtn.getStyleClass().add("btn-secondary");
+        csvBtn.setOnAction(e -> exportCsv());
+        Button excelBtn = new Button("⬇️ Export Excel");
+        excelBtn.getStyleClass().add("btn-primary");
+        excelBtn.setOnAction(e -> exportExcel());
+        Region exportSpacer = new Region();
+        HBox.setHgrow(exportSpacer, Priority.ALWAYS);
+        exportRow.getChildren().addAll(csvBtn, excelBtn, exportSpacer);
+
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         VBox.setVgrow(table, Priority.ALWAYS);
 
@@ -122,7 +139,7 @@ public class ExpensesView {
         table.setItems(expenseList);
         table.setPlaceholder(new Label("No expenses recorded yet. Add one above."));
 
-        root.getChildren().addAll(title, summaryBar, addRow, table);
+        root.getChildren().addAll(title, summaryBar, addRow, exportRow, table);
         loadExpenses();
         return root;
     }
@@ -193,6 +210,40 @@ public class ExpensesView {
         monthProfitLabel.getStyleClass().remove("text-danger");
         monthProfitLabel.getStyleClass().remove("text-accent");
         monthProfitLabel.getStyleClass().add(monthRevenue - monthExpense >= 0 ? "text-accent" : "text-danger");
+    }
+
+    private void exportCsv() {
+        File file = chooseFile("Export Expenses CSV", "expense-report", ".csv");
+        if (file == null) return;
+        try {
+            ReportExporter.exportExpensesCsv(expenseList, file);
+            showAlert("Expenses report saved to:\n" + file.getAbsolutePath());
+        } catch (IOException ex) {
+            showAlert("Could not write CSV file:\n" + ex.getMessage());
+        }
+    }
+
+    private void exportExcel() {
+        File file = chooseFile("Export Expenses Excel", "expense-report", ".xlsx");
+        if (file == null) return;
+        try {
+            ReportExporter.exportExpensesExcel(expenseList, file);
+            showAlert("Expenses report saved to:\n" + file.getAbsolutePath());
+        } catch (IOException ex) {
+            showAlert("Could not write Excel file:\n" + ex.getMessage());
+        }
+    }
+
+    private File chooseFile(String title, String baseName, String ext) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle(title);
+        String stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+        chooser.setInitialFileName(baseName + "-" + stamp + ext);
+        FileChooser.ExtensionFilter filter = ext.equals(".csv")
+                ? new FileChooser.ExtensionFilter("CSV File (*.csv)", "*.csv")
+                : new FileChooser.ExtensionFilter("Excel File (*.xlsx)", "*.xlsx");
+        chooser.getExtensionFilters().add(filter);
+        return chooser.showSaveDialog(null);
     }
 
     private void showAlert(String message) {

@@ -3,6 +3,7 @@ package com.shop.view;
 import com.shop.dao.SaleDAO;
 import com.shop.model.Sale;
 import com.shop.model.SaleItem;
+import com.shop.util.ReportExporter;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -13,9 +14,14 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
+import java.io.File;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 public class ReportsView {
@@ -50,6 +56,18 @@ public class ReportsView {
 
         Label title = new Label("📊 Recent Sales History");
         title.getStyleClass().add("section-title");
+
+        HBox exportBar = new HBox(10);
+        exportBar.setAlignment(Pos.CENTER_LEFT);
+        Button csvBtn = new Button("⬇️ Export CSV");
+        csvBtn.getStyleClass().add("btn-secondary");
+        csvBtn.setOnAction(e -> exportCsv());
+        Button excelBtn = new Button("⬇️ Export Excel");
+        excelBtn.getStyleClass().add("btn-primary");
+        excelBtn.setOnAction(e -> exportExcel());
+        Region exportSpacer = new Region();
+        HBox.setHgrow(exportSpacer, Priority.ALWAYS);
+        exportBar.getChildren().addAll(csvBtn, excelBtn, exportSpacer);
 
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         VBox.setVgrow(table, Priority.ALWAYS);
@@ -99,7 +117,7 @@ public class ReportsView {
         table.setItems(salesList);
         table.setPlaceholder(new Label("No sales completed yet. Completed POS transactions will appear here."));
 
-        tableCard.getChildren().addAll(title, table);
+        tableCard.getChildren().addAll(title, exportBar, table);
 
         root.getChildren().addAll(metricsGrid, tableCard);
         loadSales();
@@ -109,6 +127,48 @@ public class ReportsView {
     private void loadSales() {
         salesList.clear();
         salesList.addAll(saleDAO.findAll());
+    }
+
+    private void exportCsv() {
+        File file = chooseFile("Export Sales CSV", "sales-report", ".csv");
+        if (file == null) return;
+        try {
+            ReportExporter.exportSalesCsv(salesList, file);
+            showInfo("CSV Exported", "Sales report saved to:\n" + file.getAbsolutePath());
+        } catch (IOException ex) {
+            showInfo("Export Failed", "Could not write CSV file:\n" + ex.getMessage());
+        }
+    }
+
+    private void exportExcel() {
+        File file = chooseFile("Export Sales Excel", "sales-report", ".xlsx");
+        if (file == null) return;
+        try {
+            ReportExporter.exportSalesExcel(salesList, file);
+            showInfo("Excel Exported", "Sales report saved to:\n" + file.getAbsolutePath());
+        } catch (IOException ex) {
+            showInfo("Export Failed", "Could not write Excel file:\n" + ex.getMessage());
+        }
+    }
+
+    private File chooseFile(String title, String baseName, String ext) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle(title);
+        String stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+        chooser.setInitialFileName(baseName + "-" + stamp + ext);
+        FileChooser.ExtensionFilter filter = ext.equals(".csv")
+                ? new FileChooser.ExtensionFilter("CSV File (*.csv)", "*.csv")
+                : new FileChooser.ExtensionFilter("Excel File (*.xlsx)", "*.xlsx");
+        chooser.getExtensionFilters().add(filter);
+        return chooser.showSaveDialog(null);
+    }
+
+    private void showInfo(String title, String content) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
+        alert.showAndWait();
     }
 
     private VBox createMetricCard(String icon, String value, String label) {
