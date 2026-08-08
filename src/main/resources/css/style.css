@@ -537,3 +537,43 @@
     -fx-background-color: #0078d7;
     -fx-text-fill: #ffffff;
 }
+
+/* ===== AI ASSISTANT PANEL ===== */
+.assistant-panel {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #cccccc;
+    -fx-border-width: 0 0 0 1;
+}
+
+.assistant-title {
+    -fx-text-fill: #000000;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+.assistant-panel .text-area {
+    -fx-background-color: #f7f7f7;
+    -fx-border-color: #cccccc;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+.assistant-panel .text-area .content {
+    -fx-background-color: #f7f7f7;
+}
+
+.assistant-panel .toggle-button {
+    -fx-background-color: #e8e8e8;
+    -fx-text-fill: #333333;
+    -fx-border-color: #cccccc;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 6 12;
+    -fx-cursor: hand;
+}
+
+.assistant-panel .toggle-button:selected {
+    -fx-background-color: #c0392b;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #c0392b;
+}

@@ -1,131 +1,103 @@
 package com.shop.dao;
 
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Updates;
 import com.shop.model.Supplier;
+import org.bson.Document;
+import org.bson.conversions.Bson;
 
-import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class SupplierDAO {
     private final DatabaseManager db = DatabaseManager.getInstance();
+    private final MongoCollection<Document> suppliers = db.getCollection("suppliers");
 
     public List<Supplier> findAll() {
-        List<Supplier> suppliers = new ArrayList<>();
-        String sql = "SELECT * FROM suppliers ORDER BY company_name";
-        try (Connection conn = db.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                suppliers.add(mapRow(rs));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        List<Supplier> list = new ArrayList<>();
+        for (Document doc : suppliers.find().sort(new Document("company_name", 1))) {
+            list.add(mapRow(doc));
         }
-        return suppliers;
+        return list;
     }
 
     public List<Supplier> search(String query) {
-        List<Supplier> suppliers = new ArrayList<>();
-        String sql = "SELECT * FROM suppliers WHERE LOWER(company_name) LIKE ? OR LOWER(contact_person) LIKE ? OR phone LIKE ? ORDER BY company_name";
-        try (Connection conn = db.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            String pattern = "%" + query.toLowerCase() + "%";
-            pstmt.setString(1, pattern);
-            pstmt.setString(2, pattern);
-            pstmt.setString(3, pattern);
-            ResultSet rs = pstmt.executeQuery();
-            while (rs.next()) {
-                suppliers.add(mapRow(rs));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        Pattern pattern = Pattern.compile(".*" + Pattern.quote(query.toLowerCase()) + ".*", Pattern.CASE_INSENSITIVE);
+        Bson filter = Filters.or(
+                Filters.regex("company_name", pattern),
+                Filters.regex("contact_person", pattern),
+                Filters.regex("phone", pattern));
+        List<Supplier> list = new ArrayList<>();
+        for (Document doc : suppliers.find(filter).sort(new Document("company_name", 1))) {
+            list.add(mapRow(doc));
         }
-        return suppliers;
+        return list;
     }
 
     public Supplier findById(int id) {
-        String sql = "SELECT * FROM suppliers WHERE id = ?";
-        try (Connection conn = db.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, id);
-            ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) return mapRow(rs);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
+        Document doc = suppliers.find(Filters.eq("_id", id)).first();
+        return doc != null ? mapRow(doc) : null;
     }
 
     public boolean insert(Supplier supplier) {
-        String sql = "INSERT INTO suppliers (company_name, contact_person, phone, email, address) VALUES (?, ?, ?, ?, ?)";
-        try (Connection conn = db.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            pstmt.setString(1, supplier.getCompanyName());
-            pstmt.setString(2, supplier.getContactPerson());
-            pstmt.setString(3, supplier.getPhone());
-            pstmt.setString(4, supplier.getEmail());
-            pstmt.setString(5, supplier.getAddress());
-            int rows = pstmt.executeUpdate();
-            if (rows > 0) {
-                ResultSet keys = pstmt.getGeneratedKeys();
-                if (keys.next()) supplier.setId(keys.getInt(1));
-                return true;
-            }
-        } catch (SQLException e) {
+        try {
+            int id = db.nextId("suppliers");
+            supplier.setId(id);
+            Document doc = new Document("_id", id)
+                    .append("company_name", supplier.getCompanyName())
+                    .append("contact_person", supplier.getContactPerson() != null ? supplier.getContactPerson() : "")
+                    .append("phone", supplier.getPhone() != null ? supplier.getPhone() : "")
+                    .append("email", supplier.getEmail() != null ? supplier.getEmail() : "")
+                    .append("address", supplier.getAddress() != null ? supplier.getAddress() : "");
+            suppliers.insertOne(doc);
+            return true;
+        } catch (Exception e) {
             e.printStackTrace();
+            return false;
         }
-        return false;
     }
 
     public boolean update(Supplier supplier) {
-        String sql = "UPDATE suppliers SET company_name=?, contact_person=?, phone=?, email=?, address=? WHERE id=?";
-        try (Connection conn = db.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, supplier.getCompanyName());
-            pstmt.setString(2, supplier.getContactPerson());
-            pstmt.setString(3, supplier.getPhone());
-            pstmt.setString(4, supplier.getEmail());
-            pstmt.setString(5, supplier.getAddress());
-            pstmt.setInt(6, supplier.getId());
-            return pstmt.executeUpdate() > 0;
-        } catch (SQLException e) {
+        try {
+            Bson filter = Filters.eq("_id", supplier.getId());
+            Bson update = Updates.combine(
+                    Updates.set("company_name", supplier.getCompanyName()),
+                    Updates.set("contact_person", supplier.getContactPerson() != null ? supplier.getContactPerson() : ""),
+                    Updates.set("phone", supplier.getPhone() != null ? supplier.getPhone() : ""),
+                    Updates.set("email", supplier.getEmail() != null ? supplier.getEmail() : ""),
+                    Updates.set("address", supplier.getAddress() != null ? supplier.getAddress() : ""));
+            suppliers.updateOne(filter, update);
+            return true;
+        } catch (Exception e) {
             e.printStackTrace();
+            return false;
         }
-        return false;
     }
 
     public boolean delete(int id) {
-        String sql = "DELETE FROM suppliers WHERE id = ?";
-        try (Connection conn = db.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, id);
-            return pstmt.executeUpdate() > 0;
-        } catch (SQLException e) {
+        try {
+            suppliers.deleteOne(Filters.eq("_id", id));
+            return true;
+        } catch (Exception e) {
             e.printStackTrace();
+            return false;
         }
-        return false;
     }
 
     public int count() {
-        String sql = "SELECT COUNT(*) FROM suppliers";
-        try (Connection conn = db.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            if (rs.next()) return rs.getInt(1);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return 0;
+        return (int) suppliers.countDocuments();
     }
 
-    private Supplier mapRow(ResultSet rs) throws SQLException {
+    private Supplier mapRow(Document doc) {
         Supplier s = new Supplier();
-        s.setId(rs.getInt("id"));
-        s.setCompanyName(rs.getString("company_name"));
-        s.setContactPerson(rs.getString("contact_person"));
-        s.setPhone(rs.getString("phone"));
-        s.setEmail(rs.getString("email"));
-        s.setAddress(rs.getString("address"));
+        s.setId(doc.getInteger("_id"));
+        s.setCompanyName(doc.getString("company_name"));
+        s.setContactPerson(doc.getString("contact_person"));
+        s.setPhone(doc.getString("phone"));
+        s.setEmail(doc.getString("email"));
+        s.setAddress(doc.getString("address"));
         return s;
     }
 }

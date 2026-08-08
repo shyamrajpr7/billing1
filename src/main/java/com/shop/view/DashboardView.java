@@ -1,5 +1,7 @@
 package com.shop.view;
 
+import com.shop.ai.AssistantPanel;
+import com.shop.ai.CommandAssistant;
 import com.shop.model.Role;
 import com.shop.model.User;
 import com.shop.util.SessionManager;
@@ -13,6 +15,7 @@ import javafx.stage.Stage;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class DashboardView {
     private final Stage stage;
@@ -21,6 +24,8 @@ public class DashboardView {
     private final Label headerTitle = new Label("Dashboard");
     private final List<Button> navButtons = new ArrayList<>();
     private final User currentUser = SessionManager.getInstance().getCurrentUser();
+    private Supplier<Node> currentViewSupplier;
+    private String currentViewTitle = "Dashboard";
 
     public DashboardView(Stage stage) {
         this.stage = stage;
@@ -39,8 +44,13 @@ public class DashboardView {
         rootLayout.setLeft(sidebar);
         rootLayout.setCenter(centerLayout);
 
+        // AI Assistant panel (voice + text) on the right
+        AssistantPanel assistantPanel = new AssistantPanel();
+        CommandAssistant.getInstance().setDashboard(this);
+        rootLayout.setRight(assistantPanel.getView());
+
         // Load default view
-        loadView("Dashboard", new HomeView(this).getView());
+        loadView("Dashboard", () -> new HomeView(this).getView());
 
         Scene scene = new Scene(rootLayout, 1280, 800);
         scene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
@@ -65,18 +75,18 @@ public class DashboardView {
         VBox.setVgrow(navBox, Priority.ALWAYS);
 
         // Menu items based on role
-        addNavButton(navBox, "📊  Dashboard", () -> loadView("Dashboard", new HomeView(this).getView()), true);
-        addNavButton(navBox, "💳  Point of Sale (POS)", () -> loadView("Point of Sale", new POSView().getView()), false);
+        addNavButton(navBox, "📊  Dashboard", () -> loadView("Dashboard", () -> new HomeView(this).getView()), true);
+        addNavButton(navBox, "💳  Point of Sale (POS)", () -> loadView("Point of Sale", () -> new POSView().getView()), false);
 
         if (currentUser != null && (currentUser.getRole() == Role.ADMIN || currentUser.getRole() == Role.MANAGER)) {
             Label mgmtLabel = new Label("MANAGEMENT");
             mgmtLabel.getStyleClass().add("sidebar-section");
             navBox.getChildren().add(mgmtLabel);
 
-            addNavButton(navBox, "📦  Inventory / Stock", () -> loadView("Inventory Management", new InventoryView().getView()), false);
-            addNavButton(navBox, "👥  Customers", () -> loadView("Customer Management", new CustomerView().getView()), false);
-            addNavButton(navBox, "🏷️  Discounts & Coupons", () -> loadView("Discount Management", new DiscountView().getView()), false);
-            addNavButton(navBox, "🚚  Suppliers", () -> loadView("Supplier Management", new SupplierView().getView()), false);
+            addNavButton(navBox, "📦  Inventory / Stock", () -> loadView("Inventory Management", () -> new InventoryView().getView()), false);
+            addNavButton(navBox, "👥  Customers", () -> loadView("Customer Management", () -> new CustomerView().getView()), false);
+            addNavButton(navBox, "🏷️  Discounts & Coupons", () -> loadView("Discount Management", () -> new DiscountView().getView()), false);
+            addNavButton(navBox, "🚚  Suppliers", () -> loadView("Supplier Management", () -> new SupplierView().getView()), false);
         }
 
         if (currentUser != null && currentUser.getRole() == Role.ADMIN) {
@@ -84,8 +94,8 @@ public class DashboardView {
             adminLabel.getStyleClass().add("sidebar-section");
             navBox.getChildren().add(adminLabel);
 
-            addNavButton(navBox, "📈  Sales & Analytics", () -> loadView("Sales & Reports", new ReportsView().getView()), false);
-            addNavButton(navBox, "👔  Employee Directory", () -> loadView("Employee Management", new EmployeeView().getView()), false);
+            addNavButton(navBox, "📈  Sales & Analytics", () -> loadView("Sales & Reports", () -> new ReportsView().getView()), false);
+            addNavButton(navBox, "👔  Employee Directory", () -> loadView("Employee Management", () -> new EmployeeView().getView()), false);
         }
 
         // User profile panel at bottom
@@ -146,9 +156,21 @@ public class DashboardView {
         return header;
     }
 
-    public void loadView(String title, Node view) {
+    public void loadView(String title, Supplier<Node> viewSupplier) {
+        this.currentViewTitle = title;
+        this.currentViewSupplier = viewSupplier;
         headerTitle.setText(title);
         contentArea.getChildren().clear();
-        contentArea.getChildren().add(view);
+        contentArea.getChildren().add(viewSupplier.get());
+    }
+
+    public void loadView(String title, Node view) {
+        loadView(title, () -> view);
+    }
+
+    public void reloadCurrentView() {
+        if (currentViewSupplier != null) {
+            loadView(currentViewTitle, currentViewSupplier);
+        }
     }
 }

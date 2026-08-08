@@ -3,3 +3,4 @@ target/
 shopdata.db
 shopdata.db-journal
 .DS_Store
+models/
