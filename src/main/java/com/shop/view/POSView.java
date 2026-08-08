@@ -541,11 +541,24 @@ public class POSView {
         Label thankYou = new Label("Thank you for shopping with us!");
         thankYou.getStyleClass().add("sub-label");
 
-        Button closeBtn = new Button("Print / Close");
-        closeBtn.getStyleClass().add("btn-primary");
+        Button printBtn = new Button("🖨️ Print");
+        printBtn.getStyleClass().add("btn-primary");
+        printBtn.setOnAction(e -> {
+            boolean printed = com.shop.util.ReceiptPrinter.printNode(receiptStage, "Receipt " + sale.getInvoiceNumber(), root);
+            if (!printed) {
+                showAlert(Alert.AlertType.WARNING, "Print", "Print was cancelled or no printer is available.");
+            }
+        });
+
+        Button closeBtn = new Button("Close");
+        closeBtn.getStyleClass().add("btn-secondary");
         closeBtn.setOnAction(e -> receiptStage.close());
 
-        root.getChildren().addAll(shopTitle, headerSub, invoiceMeta, sep1, itemsBox, sep2, totalsBox, thankYou, closeBtn);
+        HBox buttonRow = new HBox(10);
+        buttonRow.setAlignment(Pos.CENTER);
+        buttonRow.getChildren().addAll(printBtn, closeBtn);
+
+        root.getChildren().addAll(shopTitle, headerSub, invoiceMeta, sep1, itemsBox, sep2, totalsBox, thankYou, buttonRow);
 
         Scene scene = new Scene(root, 400, 580);
         scene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());

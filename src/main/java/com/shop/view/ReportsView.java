@@ -3,6 +3,7 @@ package com.shop.view;
 import com.shop.dao.SaleDAO;
 import com.shop.model.Sale;
 import com.shop.model.SaleItem;
+import com.shop.util.ReceiptPrinter;
 import com.shop.util.ReportExporter;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -237,11 +238,23 @@ public class ReportsView {
                 new Label(String.format("Grand Total: ₹%.2f", sale.getTotal())) {{ setStyle("-fx-font-weight: bold; -fx-text-fill: #16c79a;"); }}
         );
 
+        Button printBtn = new Button("🖨️ Print Receipt");
+        printBtn.getStyleClass().add("btn-primary");
+        printBtn.setOnAction(e -> {
+            VBox receipt = com.shop.util.ReceiptPrinter.buildReceipt(sale, sale.getCustomerName());
+            com.shop.util.ReceiptPrinter.printDetached(dialog, "Receipt " + sale.getInvoiceNumber(), receipt,
+                    getClass().getResource("/css/style.css").toExternalForm());
+        });
+
         Button closeBtn = new Button("Close");
         closeBtn.getStyleClass().add("btn-secondary");
         closeBtn.setOnAction(e -> dialog.close());
 
-        root.getChildren().addAll(header, meta, itemTable, summary, closeBtn);
+        HBox buttonRow = new HBox(10);
+        buttonRow.setAlignment(Pos.CENTER);
+        buttonRow.getChildren().addAll(printBtn, closeBtn);
+
+        root.getChildren().addAll(header, meta, itemTable, summary, buttonRow);
 
         Scene scene = new Scene(root, 480, 520);
         scene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
