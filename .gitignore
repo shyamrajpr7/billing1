@@ -1,0 +1,5 @@
+target/
+*.class
+shopdata.db
+shopdata.db-journal
+.DS_Store
