@@ -208,7 +208,7 @@ public class CommandAssistant {
                 + "- Navigation: \"open dashboard\", \"open pos\", \"open inventory\", \"open customers\", "
                 + "\"open discounts\", \"open suppliers\", \"open reports\", \"open employees\"\n"
                 + "- Products: \"add product <name> at <sell price>\" (optional \"buy <price>\", \"qty <n>\"), "
-                + "\"delete product <name>\", \"check stock of <name>\", \"low stock\"\n"
+                + "\"delete product <name>\", \"check stock of <name>\", \"low stock\", \"expiring products\"\n"
                 + "- Customers: \"add customer <name>\" (optional \"phone <n>\", \"email <e>\"), "
                 + "\"search customer <name>\", \"how many customers\"\n"
                 + "- Expenses: \"add expense <description> <amount>\", \"today's expenses\", "
@@ -216,7 +216,7 @@ public class CommandAssistant {
                 + "- Sales: \"add <name> to cart\", \"add <qty> <name> to cart\", \"remove <name> from cart\", "
                 + "\"show cart\", \"clear cart\", \"pay by cash/card/upi/net banking\", \"checkout\"\n"
                 + "- Reports: \"today's revenue\", \"revenue this month\", \"sales today\", \"total sales\", "
-                + "\"total products\", \"how many customers\", \"low stock\", \"check stock of <name>\"\n"
+                + "\"total products\", \"how many customers\", \"low stock\", \"check stock of <name>\", \"expiring products\"\n"
                 + "Shop data questions map to these commands (use your best judgement for phrasing):\n"
                 + "- \"today's revenue / today's earnings / how much did we make today / how much money today\" → <<today's revenue>>\n"
                 + "- \"this month's revenue / monthly earnings\" → <<revenue this month>>\n"
@@ -225,6 +225,7 @@ public class CommandAssistant {
                 + "- \"how many products / how many items\" → <<total products>>\n"
                 + "- \"how many customers\" → <<how many customers>>\n"
                 + "- \"which items are low on stock\" → <<low stock>>\n"
+                + "- \"which products are expiring / nearing expiry\" → <<expiring products>>\n"
                 + "- \"today's expenses / how much did we spend today\" → <<today's expenses>>\n"
                 + "- \"today's profit / are we making money today\" → <<today's profit>>\n"
                 + "- \"record an expense\" → <<add expense <description> <amount>>>\n"
@@ -334,6 +335,29 @@ public class CommandAssistant {
             for (Product p : low) {
                 if (shown++ >= 10) break;
                 sb.append("\n  - ").append(p.getName()).append(": ").append(p.getQuantity()).append(" left");
+            }
+            return sb.toString();
+        }
+        if (matchesAny(lower, "expiring", "expiry", "expired", "expiration", "near expiry",
+                "expiring soon", "products expiring", "which products expire", "expiry alerts")) {
+            List<Product> expired = productDAO.findExpired();
+            List<Product> expiring = productDAO.findExpiring(30);
+            if (expired.isEmpty() && expiring.isEmpty()) {
+                return "No products are expired or expiring within the next 30 days.";
+            }
+            StringBuilder sb = new StringBuilder();
+            if (!expired.isEmpty()) {
+                sb.append("Expired (").append(expired.size()).append("):");
+                for (Product p : expired) {
+                    sb.append("\n  - ").append(p.getName()).append(" expired ").append(p.getExpiryDateLabel());
+                }
+            }
+            if (!expiring.isEmpty()) {
+                if (sb.length() > 0) sb.append("\n");
+                sb.append("Expiring within 30 days (").append(expiring.size()).append("):");
+                for (Product p : expiring) {
+                    sb.append("\n  - ").append(p.getName()).append(" expires ").append(p.getExpiryDateLabel());
+                }
             }
             return sb.toString();
         }
@@ -699,7 +723,7 @@ public class CommandAssistant {
     private String help() {
         return "Here's what I can do:\n"
                 + "  • Open screens: \"open inventory\", \"open customers\", \"open pos\", \"open reports\"\n"
-                + "  • Products: \"add product milk at 40\", \"delete product <name>\", \"check stock of <name>\", \"low stock\"\n"
+                + "  • Products: \"add product milk at 40\", \"delete product <name>\", \"check stock of <name>\", \"low stock\", \"expiring products\"\n"
                 + "  • Customers: \"add customer Rahul\", \"search customer <name>\", \"how many customers\"\n"
                 + "  • Sales: \"add milk to cart\", \"add 2 coke to cart\", \"show cart\", \"checkout\"\n"
                 + "  • Reports: \"today's revenue\", \"revenue this month\", \"sales today\"";

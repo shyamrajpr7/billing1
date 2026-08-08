@@ -1,5 +1,8 @@
 package com.shop.model;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+
 public class Product {
     private int id;
     private String name;
@@ -11,6 +14,7 @@ public class Product {
     private int minStockLevel;
     private int supplierId;
     private String supplierName;
+    private LocalDate expiryDate;
 
     public Product() {
         this.minStockLevel = 10;
@@ -57,6 +61,22 @@ public class Product {
 
     public String getSupplierName() { return supplierName; }
     public void setSupplierName(String supplierName) { this.supplierName = supplierName; }
+
+    public LocalDate getExpiryDate() { return expiryDate; }
+    public void setExpiryDate(LocalDate expiryDate) { this.expiryDate = expiryDate; }
+
+    public String getExpiryDateLabel() {
+        if (expiryDate == null) return "—";
+        return expiryDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"));
+    }
+
+    public boolean hasExpired() { return expiryDate != null && expiryDate.isBefore(LocalDate.now()); }
+
+    public boolean isExpiringSoon(int days) {
+        if (expiryDate == null) return false;
+        LocalDate today = LocalDate.now();
+        return !expiryDate.isBefore(today) && !expiryDate.isAfter(today.plusDays(days));
+    }
 
     public boolean isLowStock() { return quantity <= minStockLevel; }
 

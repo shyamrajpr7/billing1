@@ -94,6 +94,27 @@ public class InventoryView {
         TableColumn<Product, String> supplierCol = new TableColumn<>("Supplier");
         supplierCol.setCellValueFactory(new PropertyValueFactory<>("supplierName"));
 
+        TableColumn<Product, String> expiryCol = new TableColumn<>("Expiry Date");
+        expiryCol.setCellValueFactory(p -> new SimpleStringProperty(p.getValue().getExpiryDateLabel()));
+        expiryCol.setCellFactory(col -> new TableCell<Product, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null || "—".equals(item)) {
+                    setText(item == null ? null : item);
+                    setGraphic(null);
+                } else {
+                    Product p = getTableView().getItems().get(getIndex());
+                    Label badge = new Label(item);
+                    if (p.hasExpired()) badge.getStyleClass().add("badge-inactive");
+                    else if (p.isExpiringSoon(30)) badge.getStyleClass().add("badge-warning");
+                    else badge.getStyleClass().add("badge-active");
+                    setGraphic(badge);
+                    setText(null);
+                }
+            }
+        });
+
         TableColumn<Product, Void> actionCol = new TableColumn<>("Actions");
         actionCol.setCellFactory(col -> new TableCell<Product, Void>() {
             private final Button editBtn = new Button("✏️");
@@ -128,7 +149,7 @@ public class InventoryView {
             }
         });
 
-        table.getColumns().addAll(idCol, nameCol, barcodeCol, categoryCol, buyPriceCol, sellPriceCol, qtyCol, statusCol, supplierCol, actionCol);
+        table.getColumns().addAll(idCol, nameCol, barcodeCol, categoryCol, buyPriceCol, sellPriceCol, qtyCol, statusCol, supplierCol, expiryCol, actionCol);
         table.setItems(productList);
         table.setPlaceholder(new Label("No inventory records found. Click 'Add New Product' to get started."));
 
@@ -183,6 +204,9 @@ public class InventoryView {
         TextField minQtyField = new TextField(isEdit ? String.valueOf(productToEdit.getMinStockLevel()) : "5");
         minQtyField.setPromptText("Min Alert Threshold");
 
+        DatePicker expiryPicker = new DatePicker(isEdit ? productToEdit.getExpiryDate() : null);
+        expiryPicker.setPromptText("Select expiry date (optional)");
+
         ComboBox<Supplier> supplierCombo = new ComboBox<>();
         supplierCombo.getItems().clear();
         Supplier noSupplier = new Supplier("None", "", "", "", "");
@@ -232,6 +256,7 @@ public class InventoryView {
                 p.setQuantity(qty);
                 p.setMinStockLevel(minQty);
                 p.setSupplierId(supplierId);
+                p.setExpiryDate(expiryPicker.getValue());
 
                 if (isEdit) {
                     productDAO.update(p);
@@ -252,6 +277,7 @@ public class InventoryView {
                 new Label("Category"), categoryField,
                 new HBox(10, new VBox(6, new Label("Cost Price (₹)"), buyPriceField), new VBox(6, new Label("Selling Price (₹)"), sellPriceField)),
                 new HBox(10, new VBox(6, new Label("Quantity"), qtyField), new VBox(6, new Label("Min Stock Level"), minQtyField)),
+                new Label("Expiry Date (optional)"), expiryPicker,
                 new Label("Supplier"), supplierCombo,
                 saveBtn
         );

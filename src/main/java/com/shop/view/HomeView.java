@@ -51,8 +51,10 @@ public class HomeView {
         VBox salesCard = createStatCard("🛒", String.valueOf(saleDAO.getSalesCountToday()), "Transactions Today", "text-white");
         VBox productsCard = createStatCard("📦", String.valueOf(productDAO.count()), "Total Products", "text-white");
         VBox lowStockCard = createStatCard("⚠️", String.valueOf(productDAO.countLowStock()), "Low Stock Alerts", "text-warning");
+        int expiringCount = productDAO.findExpiring(30).size() + productDAO.findExpired().size();
+        VBox expiryCard = createStatCard("⏳", String.valueOf(expiringCount), "Expiring / Expired", "text-danger");
 
-        for (VBox card : List.of(revenueCard, profitCard, salesCard, productsCard, lowStockCard)) {
+        for (VBox card : List.of(revenueCard, profitCard, salesCard, productsCard, lowStockCard, expiryCard)) {
             card.setPrefWidth(175);
             statsGrid.getChildren().add(card);
         }
@@ -136,7 +138,56 @@ public class HomeView {
         alertTable.getItems().addAll(lowStockProducts);
         alertTable.setPlaceholder(new Label("No low stock items. All inventory levels are healthy! 👍"));
 
-        alertsCard.getChildren().addAll(alertsTitle, alertTable);
+        // Expiring / Expired Table
+        Label expiryTitle = new Label("⏳ Expiring Soon / Expired");
+        expiryTitle.getStyleClass().add("section-title");
+
+        TableView<Product> expiryTable = new TableView<>();
+        expiryTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        expiryTable.setPrefHeight(220);
+
+        TableColumn<Product, String> expNameCol = new TableColumn<>("Product Name");
+        expNameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
+
+        TableColumn<Product, String> expQtyCol = new TableColumn<>("In Stock");
+        expQtyCol.setCellValueFactory(p -> new SimpleStringProperty(String.valueOf(p.getValue().getQuantity())));
+
+        TableColumn<Product, String> expDateCol = new TableColumn<>("Expiry Date");
+        expDateCol.setCellValueFactory(p -> new SimpleStringProperty(p.getValue().getExpiryDateLabel()));
+
+        TableColumn<Product, String> expStatusCol = new TableColumn<>("Status");
+        expStatusCol.setCellValueFactory(p -> new SimpleStringProperty(p.getValue().hasExpired() ? "Expired" : "Expiring Soon"));
+        expStatusCol.setCellFactory(col -> new TableCell<Product, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    Label badge = new Label(item);
+                    badge.getStyleClass().add("Expired".equals(item) ? "badge-inactive" : "badge-warning");
+                    setGraphic(badge);
+                    setText(null);
+                }
+            }
+        });
+
+        expiryTable.getColumns().addAll(expNameCol, expQtyCol, expDateCol, expStatusCol);
+
+        List<Product> expiringProducts = new java.util.ArrayList<>(productDAO.findExpired());
+        expiringProducts.addAll(productDAO.findExpiring(30));
+        expiryTable.getItems().addAll(expiringProducts);
+        expiryTable.setPlaceholder(new Label("No products expiring. Nothing to worry about! 🎉"));
+
+        HBox alertsTables = new HBox(14);
+        HBox.setHgrow(alertTable, Priority.ALWAYS);
+        HBox.setHgrow(expiryTable, Priority.ALWAYS);
+        VBox lowStockPane = new VBox(8, new Label("📦 Low Stock"), alertTable);
+        VBox expiryPane = new VBox(8, new Label("📆 Expiry"), expiryTable);
+        alertsTables.getChildren().addAll(lowStockPane, expiryPane);
+
+        alertsCard.getChildren().addAll(alertsTitle, alertsTables);
 
         root.getChildren().addAll(topBox, statsGrid, quickActionsCard, alertsCard);
         return new ScrollPane(root) {{ setFitToWidth(true); setStyle("-fx-background-color: transparent;"); }};

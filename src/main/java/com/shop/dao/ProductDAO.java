@@ -7,6 +7,8 @@ import com.shop.model.Product;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -75,7 +77,8 @@ public class ProductDAO {
                     .append("sell_price", product.getSellPrice())
                     .append("quantity", product.getQuantity())
                     .append("min_stock_level", product.getMinStockLevel())
-                    .append("supplier_id", product.getSupplierId());
+                    .append("supplier_id", product.getSupplierId())
+                    .append("expiry_date", product.getExpiryDate() != null ? product.getExpiryDate().toString() : null);
             products.insertOne(doc);
             return true;
         } catch (Exception e) {
@@ -95,7 +98,8 @@ public class ProductDAO {
                     Updates.set("sell_price", product.getSellPrice()),
                     Updates.set("quantity", product.getQuantity()),
                     Updates.set("min_stock_level", product.getMinStockLevel()),
-                    Updates.set("supplier_id", product.getSupplierId()));
+                    Updates.set("supplier_id", product.getSupplierId()),
+                    Updates.set("expiry_date", product.getExpiryDate() != null ? product.getExpiryDate().toString() : null));
             products.updateOne(filter, update);
             return true;
         } catch (Exception e) {
@@ -142,6 +146,41 @@ public class ProductDAO {
                 new Document("$lte", java.util.List.of("$quantity", "$min_stock_level")));
         List<Document> docs = new ArrayList<>();
         for (Document doc : products.find(filter).sort(new Document("quantity", 1))) {
+            docs.add(doc);
+        }
+        Map<Integer, String> supplierNames = loadSupplierNames(docs);
+        List<Product> list = new ArrayList<>();
+        for (Document doc : docs) {
+            list.add(mapRow(doc, supplierNames));
+        }
+        return list;
+    }
+
+    public List<Product> findExpiring(int days) {
+        LocalDate today = LocalDate.now();
+        LocalDate end = today.plusDays(days);
+        Bson filter = Filters.and(
+                Filters.ne("expiry_date", null),
+                Filters.gte("expiry_date", today.toString()),
+                Filters.lte("expiry_date", end.toString()));
+        List<Document> docs = new ArrayList<>();
+        for (Document doc : products.find(filter).sort(new Document("expiry_date", 1))) {
+            docs.add(doc);
+        }
+        Map<Integer, String> supplierNames = loadSupplierNames(docs);
+        List<Product> list = new ArrayList<>();
+        for (Document doc : docs) {
+            list.add(mapRow(doc, supplierNames));
+        }
+        return list;
+    }
+
+    public List<Product> findExpired() {
+        Bson filter = Filters.and(
+                Filters.ne("expiry_date", null),
+                Filters.lt("expiry_date", LocalDate.now().toString()));
+        List<Document> docs = new ArrayList<>();
+        for (Document doc : products.find(filter).sort(new Document("expiry_date", 1))) {
             docs.add(doc);
         }
         Map<Integer, String> supplierNames = loadSupplierNames(docs);
@@ -206,6 +245,13 @@ public class ProductDAO {
         p.setSupplierId(sid != null ? sid : 0);
         String supplierName = sid != null && supplierNames != null ? supplierNames.get(sid) : null;
         p.setSupplierName(supplierName != null ? supplierName : "");
+        String expiry = doc.getString("expiry_date");
+        if (expiry != null && !expiry.isEmpty()) {
+            try {
+                p.setExpiryDate(LocalDate.parse(expiry));
+            } catch (Exception ignored) {
+            }
+        }
         return p;
     }
 
