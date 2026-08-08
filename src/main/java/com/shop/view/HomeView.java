@@ -5,6 +5,7 @@ import com.shop.model.Product;
 import com.shop.model.Role;
 import com.shop.model.User;
 import com.shop.util.SessionManager;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;

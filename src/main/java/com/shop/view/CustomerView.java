@@ -18,6 +18,8 @@ import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
+import java.util.List;
+
 public class CustomerView {
     private final CustomerDAO customerDAO = new CustomerDAO();
     private final SaleDAO saleDAO = new SaleDAO();
