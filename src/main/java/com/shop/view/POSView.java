@@ -3,6 +3,7 @@ package com.shop.view;
 import com.shop.dao.*;
 import com.shop.model.*;
 import com.shop.util.SessionManager;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -17,6 +18,10 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class POSView {
     private final ProductDAO productDAO = new ProductDAO();
@@ -37,6 +42,9 @@ public class POSView {
     private Customer selectedCustomer = null;
     private final ComboBox<Customer> customerCombo = new ComboBox<>();
     private final ComboBox<String> paymentMethodCombo = new ComboBox<>();
+
+    private final Label scanStatus = new Label("Ready to scan. Use a USB scanner or type a barcode and press Enter.");
+    private Timer scanDebounce = new Timer(true);
 
     private static final double TAX_RATE = 0.05; // 5% GST/Tax
 
@@ -68,21 +76,54 @@ public class POSView {
         searchBar.setAlignment(Pos.CENTER_LEFT);
 
         TextField searchField = new TextField();
-        searchField.setPromptText("🔍 Search product by name or scan barcode...");
+        searchField.setPromptText("🔍 Search product by name...");
         searchField.getStyleClass().add("search-field");
         HBox.setHgrow(searchField, Priority.ALWAYS);
 
         searchField.textProperty().addListener((obs, oldVal, newVal) -> {
             loadProducts(newVal.trim());
-            // Fast barcode check
-            if (!newVal.trim().isEmpty()) {
-                Product foundByBarcode = productDAO.findByBarcode(newVal.trim());
-                if (foundByBarcode != null && foundByBarcode.getQuantity() > 0) {
-                    addToCart(foundByBarcode);
-                    searchField.clear();
-                }
+            String code = newVal.trim();
+            if (!code.isEmpty()) {
+                scanDebounce.cancel();
+                scanDebounce = new Timer(true);
+                scanDebounce.schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        Platform.runLater(() -> {
+                            Product foundByBarcode = productDAO.findByBarcode(code);
+                            if (foundByBarcode != null && foundByBarcode.getQuantity() > 0) {
+                                addToCart(foundByBarcode);
+                                searchField.clear();
+                                setScanStatus("✓ " + foundByBarcode.getName() + " added to cart.");
+                            }
+                        });
+                    }
+                }, 300);
             }
         });
+
+        // Dedicated barcode scan row (USB scanner = keyboard wedge, or manual entry)
+        Label scanLabel = new Label("📷 Scan Barcode:");
+        scanLabel.getStyleClass().add("form-label");
+
+        TextField scanField = new TextField();
+        scanField.setPromptText("Type/scan barcode, press Enter (or barcode*qty)");
+        HBox.setHgrow(scanField, Priority.ALWAYS);
+
+        Button scanBtn = new Button("Scan");
+        scanBtn.getStyleClass().add("btn-primary");
+        scanBtn.setOnAction(e -> processScan(scanField.getText()));
+
+        scanField.setOnAction(e -> processScan(scanField.getText()));
+        scanField.requestFocus();
+
+        scanStatus.getStyleClass().add("sub-label");
+
+        VBox scanBox = new VBox(4);
+        HBox scanRow = new HBox(8);
+        scanRow.setAlignment(Pos.CENTER_LEFT);
+        scanRow.getChildren().addAll(scanLabel, scanField, scanBtn);
+        scanBox.getChildren().addAll(scanRow, scanStatus);
 
         searchBar.getChildren().add(searchField);
 
@@ -138,7 +179,7 @@ public class POSView {
         productTable.setItems(availableProducts);
         productTable.setPlaceholder(new Label("No products found matching your search."));
 
-        panel.getChildren().addAll(searchBar, productTable);
+        panel.getChildren().addAll(scanBox, searchBar, productTable);
         return panel;
     }
 
@@ -317,6 +358,56 @@ public class POSView {
         customerCombo.getItems().addAll(customerDAO.findAll());
         customerCombo.getSelectionModel().selectFirst();
         selectedCustomer = walkIn;
+    }
+
+    private void processScan(String input) {
+        String text = input == null ? "" : input.trim();
+        if (text.isEmpty()) return;
+
+        int qty = 1;
+        String code = text;
+        Matcher qtyMatcher = Pattern.compile("^(.*?)[*xX](\\d+)$").matcher(text);
+        if (qtyMatcher.matches()) {
+            code = qtyMatcher.group(1).trim();
+            qty = Integer.parseInt(qtyMatcher.group(2));
+            if (qty < 1) qty = 1;
+        }
+
+        if (code.isEmpty()) return;
+
+        Product product = productDAO.findByBarcode(code);
+        if (product == null) {
+            beep();
+            setScanStatus("✗ Barcode not found: " + code);
+            return;
+        }
+        if (product.getQuantity() <= 0) {
+            beep();
+            setScanStatus("✗ " + product.getName() + " is out of stock.");
+            return;
+        }
+        if (qty > product.getQuantity()) {
+            beep();
+            setScanStatus("✗ Only " + product.getQuantity() + " of " + product.getName() + " in stock.");
+            return;
+        }
+
+        for (int i = 0; i < qty; i++) {
+            addToCart(product);
+        }
+        beep();
+        setScanStatus("✓ " + product.getName() + " added" + (qty > 1 ? " x" + qty : "") + " to cart.");
+    }
+
+    private void setScanStatus(String text) {
+        scanStatus.setText(text);
+    }
+
+    private void beep() {
+        try {
+            java.awt.Toolkit.getDefaultToolkit().beep();
+        } catch (Exception ignored) {
+        }
     }
 
     private void addToCart(Product product) {
