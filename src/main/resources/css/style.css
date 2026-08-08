@@ -551,15 +551,47 @@
     -fx-font-weight: bold;
 }
 
-.assistant-panel .text-area {
-    -fx-background-color: #f7f7f7;
-    -fx-border-color: #cccccc;
-    -fx-border-radius: 4;
-    -fx-background-radius: 4;
+/* ===== CHAT MESSAGES (WhatsApp-style) ===== */
+.chat-scroll {
+    -fx-background-color: #ece5dd;
+    -fx-background: #ece5dd;
+    -fx-border-color: #d5cec4;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
 }
 
-.assistant-panel .text-area .content {
-    -fx-background-color: #f7f7f7;
+.chat-scroll .viewport {
+    -fx-background-color: #ece5dd;
+}
+
+.chat-messages {
+    -fx-background-color: #ece5dd;
+}
+
+.chat-bubble-user {
+    -fx-background-color: #dcf8c6;
+    -fx-background-radius: 10 10 2 10;
+    -fx-padding: 6 10;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 2, 0, 0, 1);
+}
+
+.chat-bubble-assistant {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 10 10 10 2;
+    -fx-padding: 6 10;
+    -fx-border-color: #e2ddd4;
+    -fx-border-radius: 10 10 10 2;
+}
+
+.chat-bubble-user .label,
+.chat-bubble-assistant .label {
+    -fx-text-fill: #111111;
+    -fx-font-size: 12.5px;
+}
+
+.chat-time {
+    -fx-font-size: 9.5px;
+    -fx-text-fill: #8a8a8a;
 }
 
 .assistant-panel .toggle-button {

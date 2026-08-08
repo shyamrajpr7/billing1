@@ -165,7 +165,7 @@ public class CommandAssistant {
             return "I didn't understand that. Say or type \"help\" to see what I can do.";
         }
         try {
-            String reply = llm.chat(systemPrompt(), text);
+            String reply = llm.chatWithWeb(systemPrompt(), text);
             Matcher m = Pattern.compile("<<([^>]+)>>").matcher(reply);
             if (m.find()) {
                 String command = m.group(1).trim();
@@ -206,13 +206,26 @@ public class CommandAssistant {
                 + "- Sales: \"add <name> to cart\", \"add <qty> <name> to cart\", \"remove <name> from cart\", "
                 + "\"show cart\", \"clear cart\", \"pay by cash/card/upi/net banking\", \"checkout\"\n"
                 + "- Reports: \"today's revenue\", \"revenue this month\", \"sales today\", \"total sales\", "
-                + "\"total products\"\n"
+                + "\"total products\", \"how many customers\", \"low stock\", \"check stock of <name>\"\n"
+                + "Shop data questions map to these commands (use your best judgement for phrasing):\n"
+                + "- \"today's revenue / today's earnings / how much did we make today / how much money today\" → <<today's revenue>>\n"
+                + "- \"this month's revenue / monthly earnings\" → <<revenue this month>>\n"
+                + "- \"how many sales today / today's transactions / what's today's transaction\" → <<sales today>>\n"
+                + "- \"total sales / how many transactions in total\" → <<total sales>>\n"
+                + "- \"how many products / how many items\" → <<total products>>\n"
+                + "- \"how many customers\" → <<how many customers>>\n"
+                + "- \"which items are low on stock\" → <<low stock>>\n"
                 + "Rules:\n"
-                + "1. If the user asks for one of these actions, reply with ONLY the exact command text wrapped in "
-                + "double angle brackets, e.g. <<add product milk at 40>>, and nothing else. Use the product name "
-                + "the user said.\n"
-                + "2. Otherwise (greetings, small talk, questions, advice) reply naturally, briefly and helpfully.\n"
-                + "3. Never invent commands outside the list above. If something can't be done, say so in plain text.";
+                + "1. If the user asks about the shop's own data (sales, revenue, transactions, products, stock, "
+                + "customers) in ANY wording, reply with ONLY the matching command wrapped in double angle brackets, "
+                + "e.g. <<today's revenue>> or <<check stock of milk>>, and nothing else. Never answer shop-data "
+                + "questions from memory or web search — the command pulls the real number from the database.\n"
+                + "2. If the user asks for an action (add product, checkout, open a screen) reply with ONLY the "
+                + "exact command in double angle brackets.\n"
+                + "3. Otherwise (greetings, small talk, world knowledge, general questions) reply naturally, briefly "
+                + "and helpfully. You have live web search: for factual or current questions, search the web and give "
+                + "an accurate, precise answer with sources.\n"
+                + "4. Never invent commands outside the list above. If something can't be done, say so in plain text.";
     }
 
     // ----------------------------------------------------------------
@@ -265,23 +278,32 @@ public class CommandAssistant {
     // ----------------------------------------------------------------
     private String handleReports(String lower) {
         if (matchesAny(lower, "today's revenue", "today revenue", "revenue today", "how much did we make today",
-                "how much we made today", "earnings today", "sales amount today")) {
+                "how much we made today", "how much did we earn today", "earnings today", "today earning",
+                "today's earning", "today's transaction amount", "transaction amount today",
+                "sales amount today", "today's sales amount", "total for today", "how much money today")) {
             return "Today's revenue is ₹" + String.format("%.2f", saleDAO.getTotalRevenueToday()) + ".";
         }
         if (matchesAny(lower, "this month's revenue", "this month revenue", "monthly revenue", "revenue this month",
-                "how much did we make this month", "earnings this month")) {
+                "how much did we make this month", "earnings this month", "this month earning",
+                "monthly earning", "monthly sales", "how much did we earn this month")) {
             return "This month's revenue is ₹" + String.format("%.2f", saleDAO.getTotalRevenueThisMonth()) + ".";
         }
-        if (matchesAny(lower, "sales today", "transactions today", "how many sales today", "how many sales did we make today")) {
+        if (matchesAny(lower, "sales today", "transactions today", "how many sales today",
+                "how many sales did we make today", "today's sales", "sales for today",
+                "today's transaction", "today's transactions", "today transaction", "transaction today",
+                "how many transactions today", "what are today's transactions", "what's today's transaction")) {
             return "You have " + saleDAO.getSalesCountToday() + " sale(s) today.";
         }
-        if (matchesAny(lower, "total sales", "how many sales", "how many transactions", "total transactions")) {
+        if (matchesAny(lower, "total sales", "how many sales", "how many transactions", "total transactions",
+                "all sales", "how many sales in total", "how many transactions in total")) {
             return "There have been " + saleDAO.findAll().size() + " sale(s) in total.";
         }
-        if (matchesAny(lower, "total products", "how many products", "product count", "how many products do we have")) {
+        if (matchesAny(lower, "total products", "how many products", "product count",
+                "how many products do we have", "how many items", "how many items in stock")) {
             return "You have " + productDAO.count() + " product(s) in inventory.";
         }
-        if (matchesAny(lower, "how many customers", "customer count", "total customers")) {
+        if (matchesAny(lower, "how many customers", "customer count", "total customers",
+                "how many customers do we have", "how many customers are there")) {
             return "You have " + customerDAO.count() + " registered customer(s).";
         }
         if (matchesAny(lower, "low stock count", "how many low stock", "how many products are low")) {

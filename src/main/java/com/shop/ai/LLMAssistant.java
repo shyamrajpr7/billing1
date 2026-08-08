@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * Conversational AI backend. OpenAI-compatible, auto-detects the provider from
@@ -21,14 +22,23 @@ import java.util.List;
  *   <li>{@code xai-...} → xAI / Grok ({@code api.x.ai}, default model {@code grok-4.5})</li>
  * </ul>
  *
+ * <p>Live web search is available through {@link #chatWithWeb}: it calls a
+ * search-capable model (default {@code openai/gpt-oss-20b} with the
+ * {@code browser_search} tool, or {@code groq/compound-mini} which searches
+ * automatically) so the assistant answers current, factual questions from the
+ * live web — no buttons or extra setup. If the search model fails or is rate
+ * limited it falls back to the base chat model.</p>
+ *
  * <p>The key is read from the environment variable {@code GROQ_API_KEY} or
  * {@code GROK_API_KEY}, or from {@code ~/.groq_key} / {@code ~/.grok_key}
- * (first line). The model can be overridden with {@code LLM_MODEL}.</p>
+ * (first line). Models can be overridden with {@code LLM_MODEL},
+ * {@code LLM_SEARCH_MODEL}.</p>
  */
 public class LLMAssistant {
 
     private static final String GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
     private static final String XAI_ENDPOINT = "https://api.x.ai/v1/chat/completions";
+    private static final Pattern CITATION_MARKERS = Pattern.compile("【[^】]*】");
 
     private static LLMAssistant instance;
 
@@ -36,27 +46,25 @@ public class LLMAssistant {
     private final String provider;
     private final String endpoint;
     private final String model;
+    private final String searchModel;
     private final HttpClient client = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
             .build();
 
     private LLMAssistant() {
         this.apiKey = resolveKey();
-        boolean groq = !apiKey.isEmpty() && apiKey.startsWith("gsk_");
         boolean xai = !apiKey.isEmpty() && apiKey.startsWith("xai-");
 
         if (xai) {
             provider = "xAI Grok";
             endpoint = XAI_ENDPOINT;
             model = env("LLM_MODEL", env("GROK_MODEL", "grok-4.5"));
-        } else if (groq) {
-            provider = "Groq";
-            endpoint = GROQ_ENDPOINT;
-            model = env("LLM_MODEL", env("GROQ_MODEL", "llama-3.3-70b-versatile"));
+            searchModel = env("LLM_SEARCH_MODEL", env("GROK_SEARCH_MODEL", "grok-4.5"));
         } else {
             provider = "Groq";
             endpoint = GROQ_ENDPOINT;
             model = env("LLM_MODEL", env("GROQ_MODEL", "llama-3.3-70b-versatile"));
+            searchModel = env("LLM_SEARCH_MODEL", env("GROQ_SEARCH_MODEL", "openai/gpt-oss-20b"));
         }
     }
 
@@ -107,29 +115,79 @@ public class LLMAssistant {
         return model;
     }
 
+    public String getSearchModel() {
+        return searchModel;
+    }
+
     /**
-     * Sends a single user message to the LLM and returns its reply.
-     *
-     * @throws IllegalStateException if the key is not configured
-     * @throws RuntimeException      on network / API errors
+     * Plain chat reply (no web search).
      */
     public String chat(String systemPrompt, String userText) {
+        return chat(systemPrompt, userText, false);
+    }
+
+    /**
+     * Chat with automatic live web search for up-to-date, accurate answers.
+     * Retries once on rate limits and falls back to the base model if the
+     * search model is unavailable.
+     */
+    public String chatWithWeb(String systemPrompt, String userText) {
+        return chat(systemPrompt, userText, true);
+    }
+
+    private String chat(String systemPrompt, String userText, boolean webSearch) {
         if (!isConfigured()) {
             throw new IllegalStateException("No API key set. Set GROQ_API_KEY, or put your key in ~/.groq_key.");
         }
+        if (!webSearch) {
+            return doChat(systemPrompt, userText, model, false);
+        }
 
+        try {
+            return doChat(systemPrompt, userText, searchModel, true);
+        } catch (ApiException e) {
+            if (e.status == 429) {
+                sleepQuietly(3000);
+                try {
+                    return doChat(systemPrompt, userText, searchModel, true);
+                } catch (ApiException ignored) {
+                }
+            }
+            if (!searchModel.equals(model)) {
+                try {
+                    return doChat(systemPrompt, userText, model, false);
+                } catch (RuntimeException ignored) {
+                }
+            }
+            throw e;
+        } catch (RuntimeException e) {
+            if (!searchModel.equals(model)) {
+                try {
+                    return doChat(systemPrompt, userText, model, false);
+                } catch (RuntimeException ignored) {
+                }
+            }
+            throw e;
+        }
+    }
+
+    private String doChat(String systemPrompt, String userText, String chosenModel, boolean webSearch) {
         Document payload = new Document()
-                .append("model", model)
+                .append("model", chosenModel)
                 .append("stream", false)
                 .append("messages", List.of(
                         new Document("role", "system").append("content", systemPrompt),
                         new Document("role", "user").append("content", userText)
                 ));
 
+        if (webSearch && chosenModel.startsWith("openai/")) {
+            payload.append("tools", List.of(new Document("type", "browser_search")));
+        }
+
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(endpoint))
-                    .timeout(Duration.ofSeconds(60))
+                    .timeout(Duration.ofSeconds(150))
                     .header("Content-Type", "application/json")
                     .header("Authorization", "Bearer " + apiKey)
                     .POST(HttpRequest.BodyPublishers.ofString(payload.toJson()))
@@ -139,28 +197,66 @@ public class LLMAssistant {
                     HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
             if (response.statusCode() != 200) {
-                throw new RuntimeException(provider + " API error " + response.statusCode() + ": "
-                        + truncate(response.body(), 300));
+                throw new ApiException(response.statusCode(), provider + " API error "
+                        + response.statusCode() + ": " + truncate(response.body(), 300));
             }
 
             Document root = Document.parse(response.body());
             Document message = root.getList("choices", Document.class)
                     .get(0)
                     .get("message", Document.class);
-            String content = message.getString("content");
-            return content == null ? "" : content.trim();
+            return extractContent(message);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Request interrupted.", e);
         } catch (java.net.ConnectException e) {
             throw new RuntimeException("Could not reach the " + provider + " API. Check your internet connection.", e);
+        } catch (ApiException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException(provider + " request failed: " + e.getMessage(), e);
+        }
+    }
+
+    private String extractContent(Document message) {
+        Object content = message.get("content");
+        String text;
+        if (content instanceof String) {
+            text = (String) content;
+        } else if (content instanceof List<?> parts) {
+            StringBuilder sb = new StringBuilder();
+            for (Object part : parts) {
+                if (part instanceof Document d) {
+                    Object t = d.get("text");
+                    if (t instanceof String) sb.append((String) t);
+                }
+            }
+            text = sb.toString();
+        } else {
+            text = "";
+        }
+        return CITATION_MARKERS.matcher(text).replaceAll("").trim();
+    }
+
+    private void sleepQuietly(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 
     private String truncate(String s, int max) {
         if (s == null || s.length() <= max) return s == null ? "" : s;
         return s.substring(0, max) + "...";
+    }
+
+    private static class ApiException extends RuntimeException {
+        final int status;
+
+        ApiException(int status, String message) {
+            super(message);
+            this.status = status;
+        }
     }
 }
