@@ -1,7 +1,11 @@
 package com.shop.view;
 
 import com.shop.dao.CustomerDAO;
+import com.shop.dao.SaleDAO;
 import com.shop.model.Customer;
+import com.shop.model.Sale;
+import com.shop.model.SaleItem;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -16,6 +20,7 @@ import javafx.stage.Stage;
 
 public class CustomerView {
     private final CustomerDAO customerDAO = new CustomerDAO();
+    private final SaleDAO saleDAO = new SaleDAO();
     private final ObservableList<Customer> customerList = FXCollections.observableArrayList();
     private final TableView<Customer> table = new TableView<>();
 
@@ -63,12 +68,19 @@ public class CustomerView {
 
         TableColumn<Customer, Void> actionCol = new TableColumn<>("Actions");
         actionCol.setCellFactory(col -> new TableCell<Customer, Void>() {
+            private final Button histBtn = new Button("🧾");
             private final Button editBtn = new Button("✏️");
             private final Button delBtn = new Button("🗑️");
-            private final HBox btnBox = new HBox(6, editBtn, delBtn);
+            private final HBox btnBox = new HBox(6, histBtn, editBtn, delBtn);
             {
+                histBtn.getStyleClass().addAll("btn-primary", "btn-small");
                 editBtn.getStyleClass().addAll("btn-secondary", "btn-small");
                 delBtn.getStyleClass().addAll("btn-danger", "btn-small");
+
+                histBtn.setOnAction(e -> {
+                    Customer c = getTableView().getItems().get(getIndex());
+                    showPurchaseHistory(c);
+                });
 
                 editBtn.setOnAction(e -> {
                     Customer c = getTableView().getItems().get(getIndex());
@@ -170,6 +182,143 @@ public class CustomerView {
         );
 
         Scene scene = new Scene(form, 400, 480);
+        scene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
+        dialog.setScene(scene);
+        dialog.show();
+    }
+
+    private void showPurchaseHistory(Customer customer) {
+        List<Sale> sales = saleDAO.findByCustomerId(customer.getId());
+
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Purchase History - " + customer.getName());
+
+        VBox root = new VBox(14);
+        root.setPadding(new Insets(20));
+        root.getStyleClass().add("card");
+
+        Label header = new Label("🧾 Purchase History: " + customer.getName());
+        header.getStyleClass().add("section-title");
+
+        double totalSpent = sales.stream().mapToDouble(Sale::getTotal).sum();
+
+        HBox summaryBar = new HBox(14);
+        VBox countCard = createSummaryCard(String.valueOf(sales.size()), "Total Purchases");
+        VBox spentCard = createSummaryCard(String.format("₹%.2f", totalSpent), "Total Spent");
+        VBox avgCard = createSummaryCard(sales.isEmpty() ? "₹0.00" : String.format("₹%.2f", totalSpent / sales.size()), "Avg Per Purchase");
+        HBox.setHgrow(countCard, Priority.ALWAYS);
+        HBox.setHgrow(spentCard, Priority.ALWAYS);
+        HBox.setHgrow(avgCard, Priority.ALWAYS);
+        summaryBar.getChildren().addAll(countCard, spentCard, avgCard);
+
+        TableView<Sale> saleTable = new TableView<>(FXCollections.observableArrayList(sales));
+        saleTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        VBox.setVgrow(saleTable, Priority.ALWAYS);
+
+        TableColumn<Sale, String> invCol = new TableColumn<>("Invoice #");
+        invCol.setCellValueFactory(new PropertyValueFactory<>("invoiceNumber"));
+
+        TableColumn<Sale, String> dateCol = new TableColumn<>("Date & Time");
+        dateCol.setCellValueFactory(new PropertyValueFactory<>("formattedDate"));
+
+        TableColumn<Sale, String> payCol = new TableColumn<>("Payment");
+        payCol.setCellValueFactory(new PropertyValueFactory<>("paymentMethod"));
+
+        TableColumn<Sale, String> totalCol = new TableColumn<>("Total");
+        totalCol.setCellValueFactory(p -> new SimpleStringProperty(p.getValue().getFormattedTotal()));
+
+        TableColumn<Sale, Void> detailCol = new TableColumn<>("");
+        detailCol.setCellFactory(col -> new TableCell<Sale, Void>() {
+            private final Button viewBtn = new Button("👁️ Details");
+            {
+                viewBtn.getStyleClass().addAll("btn-secondary", "btn-small");
+                viewBtn.setOnAction(e -> {
+                    Sale sale = getTableView().getItems().get(getIndex());
+                    showSaleItems(sale);
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : viewBtn);
+            }
+        });
+
+        saleTable.getColumns().addAll(invCol, dateCol, payCol, totalCol, detailCol);
+        saleTable.setPlaceholder(new Label("No purchases found for this customer."));
+
+        Button closeBtn = new Button("Close");
+        closeBtn.getStyleClass().add("btn-secondary");
+        closeBtn.setMaxWidth(Double.MAX_VALUE);
+        closeBtn.setOnAction(e -> dialog.close());
+
+        root.getChildren().addAll(header, summaryBar, saleTable, closeBtn);
+
+        Scene scene = new Scene(root, 640, 480);
+        scene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
+        dialog.setScene(scene);
+        dialog.show();
+    }
+
+    private VBox createSummaryCard(String value, String label) {
+        VBox card = new VBox(6);
+        card.getStyleClass().add("stat-card");
+        Label valueLabel = new Label(value);
+        valueLabel.getStyleClass().addAll("stat-value", "text-accent");
+        Label labelL = new Label(label);
+        labelL.getStyleClass().add("stat-label");
+        card.getChildren().addAll(valueLabel, labelL);
+        return card;
+    }
+
+    private void showSaleItems(Sale sale) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Items - " + sale.getInvoiceNumber());
+
+        VBox root = new VBox(14);
+        root.setPadding(new Insets(20));
+        root.getStyleClass().add("card");
+
+        Label header = new Label("Items in " + sale.getInvoiceNumber());
+        header.getStyleClass().add("section-title");
+
+        TableView<SaleItem> itemTable = new TableView<>(FXCollections.observableArrayList(sale.getItems()));
+        itemTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        itemTable.setPrefHeight(220);
+
+        TableColumn<SaleItem, String> pCol = new TableColumn<>("Product");
+        pCol.setCellValueFactory(new PropertyValueFactory<>("productName"));
+
+        TableColumn<SaleItem, Integer> qCol = new TableColumn<>("Qty");
+        qCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
+
+        TableColumn<SaleItem, String> uCol = new TableColumn<>("Unit Price");
+        uCol.setCellValueFactory(i -> new SimpleStringProperty(i.getValue().getFormattedUnitPrice()));
+
+        TableColumn<SaleItem, String> tCol = new TableColumn<>("Total");
+        tCol.setCellValueFactory(i -> new SimpleStringProperty(i.getValue().getFormattedTotal()));
+
+        itemTable.getColumns().addAll(pCol, qCol, uCol, tCol);
+
+        VBox summary = new VBox(4);
+        summary.getChildren().addAll(
+                new Label(String.format("Subtotal: ₹%.2f", sale.getSubtotal())),
+                new Label(String.format("Discount: -₹%.2f", sale.getDiscountAmount())),
+                new Label(String.format("Tax: ₹%.2f", sale.getTax())),
+                new Label(String.format("Grand Total: ₹%.2f", sale.getTotal())) {{ setStyle("-fx-font-weight: bold; -fx-text-fill: #16c79a;"); }}
+        );
+
+        Button closeBtn = new Button("Close");
+        closeBtn.getStyleClass().add("btn-secondary");
+        closeBtn.setMaxWidth(Double.MAX_VALUE);
+        closeBtn.setOnAction(e -> dialog.close());
+
+        root.getChildren().addAll(header, itemTable, summary, closeBtn);
+
+        Scene scene = new Scene(root, 480, 420);
         scene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
         dialog.setScene(scene);
         dialog.show();

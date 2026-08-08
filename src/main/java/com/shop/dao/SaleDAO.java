@@ -131,6 +131,20 @@ public class SaleDAO {
         return items;
     }
 
+    public List<Sale> findByCustomerId(int customerId) {
+        List<Document> docs = new ArrayList<>();
+        for (Document doc : sales.find(Filters.eq("customer_id", customerId)).sort(new Document("created_at", -1))) {
+            docs.add(doc);
+        }
+        Map<Integer, String> customerNames = loadCustomerNames(docs);
+        Map<Integer, String> userNames = loadUserNames(docs);
+        List<Sale> list = new ArrayList<>();
+        for (Document doc : docs) {
+            list.add(mapSaleRow(doc, customerNames, userNames));
+        }
+        return list;
+    }
+
     public double getTotalRevenueToday() {
         String today = LocalDate.now().toString();
         return sumRevenue(Filters.regex("created_at", "^" + today));
