@@ -594,6 +594,13 @@
     -fx-text-fill: #8a8a8a;
 }
 
+.voice-partial {
+    -fx-text-fill: #555555;
+    -fx-font-style: italic;
+    -fx-font-size: 12px;
+    -fx-padding: 2 4;
+}
+
 .assistant-panel .toggle-button {
     -fx-background-color: #e8e8e8;
     -fx-text-fill: #333333;

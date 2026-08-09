@@ -17,26 +17,53 @@ public class VoiceRecognizer {
 
     private static final float SAMPLE_RATE = 16000f;
     private static final Pattern TEXT_PATTERN = Pattern.compile("\"text\"\\s*:\\s*\"([^\"]*)\"");
+    private static final Pattern PARTIAL_PATTERN = Pattern.compile("\"partial\"\\s*:\\s*\"([^\"]*)\"");
 
     private Model model;
     private volatile boolean running;
     private Thread listenerThread;
+    private volatile TargetDataLine micLine;
     private String lastError;
     private final Consumer<String> onResult;
+    private final Consumer<String> onPartial;
     private final Consumer<String> onError;
 
     public VoiceRecognizer(String modelPath, Consumer<String> onResult, Consumer<String> onError) {
+        this(modelPath, onResult, null, onError);
+    }
+
+    public VoiceRecognizer(String modelPath, Consumer<String> onResult, Consumer<String> onPartial, Consumer<String> onError) {
         this.onResult = onResult;
+        this.onPartial = onPartial;
         this.onError = onError;
+        String resolved = resolveModelPath(modelPath);
+        if (resolved == null) {
+            lastError = "Speech model not found (looked for \"" + modelPath + "\" and common locations). Voice mode disabled.";
+            return;
+        }
         try {
-            if (modelPath == null || !new File(modelPath).exists()) {
-                lastError = "Speech model not found at \"" + modelPath + "\". Voice mode disabled.";
-                return;
-            }
-            model = new Model(modelPath);
+            model = new Model(resolved);
         } catch (Exception e) {
             lastError = "Could not load speech model: " + e.getMessage();
         }
+    }
+
+    /**
+     * Finds the speech model even when the app is launched from another
+     * directory: honours the explicit path first, then falls back to the
+     * working directory and the application directory.
+     */
+    private String resolveModelPath(String modelPath) {
+        if (modelPath != null && new File(modelPath).exists()) return modelPath;
+        String[] candidates = {
+                "models/vosk-model-small-en-us-0.15",
+                System.getProperty("user.dir") + "/models/vosk-model-small-en-us-0.15",
+                new File(".").getAbsoluteFile().getParent() + "/models/vosk-model-small-en-us-0.15"
+        };
+        for (String candidate : candidates) {
+            if (new File(candidate).exists()) return candidate;
+        }
+        return null;
     }
 
     public boolean isAvailable() {
@@ -61,12 +88,23 @@ public class VoiceRecognizer {
 
     public void stop() {
         running = false;
+        TargetDataLine line = micLine;
+        if (line != null) {
+            try {
+                line.stop();
+                line.close();
+            } catch (Exception ignored) {
+            }
+        }
         if (listenerThread != null) {
             listenerThread.interrupt();
         }
     }
 
     private void listen() {
+        TargetDataLine line = null;
+        Recognizer recognizer = null;
+        String lastFinal = null;
         try {
             AudioFormat format = new AudioFormat(SAMPLE_RATE, 16, 1, true, false);
             DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
@@ -76,29 +114,57 @@ public class VoiceRecognizer {
                 return;
             }
 
-            try (TargetDataLine line = (TargetDataLine) AudioSystem.getLine(info);
-                 Recognizer recognizer = new Recognizer(model, SAMPLE_RATE)) {
-                line.open(format);
-                line.start();
+            line = (TargetDataLine) AudioSystem.getLine(info);
+            micLine = line;
+            line.open(format);
+            line.start();
+            recognizer = new Recognizer(model, SAMPLE_RATE);
 
-                byte[] buffer = new byte[4096];
-                while (running) {
-                    int bytesRead = line.read(buffer, 0, buffer.length);
-                    if (bytesRead > 0 && recognizer.acceptWaveForm(buffer, bytesRead)) {
-                        String result = recognizer.getResult();
-                        String text = extractText(result);
-                        if (text != null && !text.isBlank()) {
-                            onResult.accept(text);
-                        }
+            byte[] buffer = new byte[4096];
+            while (running) {
+                int bytesRead = line.read(buffer, 0, buffer.length);
+                if (bytesRead <= 0) continue;
+                if (recognizer.acceptWaveForm(buffer, bytesRead)) {
+                    String result = recognizer.getResult();
+                    String text = extractText(result);
+                    if (text != null && !text.isBlank()) {
+                        lastFinal = text;
+                        onResult.accept(text);
+                    }
+                } else if (onPartial != null) {
+                    String partial = extractPartial(recognizer.getPartialResult());
+                    if (partial != null && !partial.isBlank()) {
+                        onPartial.accept(partial);
                     }
                 }
-                line.stop();
-            } catch (Exception e) {
-                notifyError("Microphone error: " + e.getMessage());
             }
         } catch (Exception e) {
-            notifyError("Could not open microphone: " + e.getMessage());
+            if (running) {
+                notifyError("Microphone error: " + e.getMessage());
+            }
         } finally {
+            // Pull whatever was still being spoken so nothing is lost on stop.
+            if (recognizer != null) {
+                try {
+                    String text = extractText(recognizer.getFinalResult());
+                    if (text != null && !text.isBlank() && !text.equals(lastFinal)) {
+                        onResult.accept(text);
+                    }
+                } catch (Exception ignored) {
+                }
+                try {
+                    recognizer.close();
+                } catch (Exception ignored) {
+                }
+            }
+            if (line != null) {
+                try {
+                    line.stop();
+                    line.close();
+                } catch (Exception ignored) {
+                }
+            }
+            micLine = null;
             running = false;
         }
     }
@@ -109,6 +175,15 @@ public class VoiceRecognizer {
 
     private String extractText(String json) {
         Matcher m = TEXT_PATTERN.matcher(json);
+        if (m.find()) {
+            String text = m.group(1).trim();
+            return text.isEmpty() ? null : text;
+        }
+        return null;
+    }
+
+    private String extractPartial(String json) {
+        Matcher m = PARTIAL_PATTERN.matcher(json);
         if (m.find()) {
             String text = m.group(1).trim();
             return text.isEmpty() ? null : text;

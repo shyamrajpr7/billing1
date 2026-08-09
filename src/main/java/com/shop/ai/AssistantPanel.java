@@ -25,6 +25,7 @@ public class AssistantPanel {
     private final TextField input = new TextField();
     private final ToggleButton micButton = new ToggleButton("🎤 Voice");
     private final Label statusLabel = new Label("Voice: off");
+    private final Label partialLabel = new Label();
 
     private VoiceRecognizer voice;
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
@@ -46,7 +47,7 @@ public class AssistantPanel {
 
         Button clearBtn = new Button("Clear");
         clearBtn.getStyleClass().addAll("btn-secondary", "btn-small");
-        clearBtn.setOnAction(e -> messagesBox.getChildren().clear());
+        clearBtn.setOnAction(e -> messagesBox.getChildren().removeIf(n -> n != partialLabel));
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -63,6 +64,11 @@ public class AssistantPanel {
         scrollPane.setFitToWidth(true);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        partialLabel.getStyleClass().add("voice-partial");
+        partialLabel.setWrapText(true);
+        partialLabel.setVisible(false);
+        messagesBox.getChildren().add(partialLabel);
 
         HBox inputBar = new HBox(8);
         inputBar.setAlignment(Pos.CENTER_LEFT);
@@ -94,10 +100,15 @@ public class AssistantPanel {
         String modelPath = System.getProperty("vosk.model", "models/vosk-model-small-en-us-0.15");
         voice = new VoiceRecognizer(modelPath, text -> {
             Platform.runLater(() -> {
+                partialLabel.setVisible(false);
                 appendMessage("you", text);
                 execute(text);
             });
-        }, error -> Platform.runLater(() -> statusLabel.setText("Voice error: " + error)));
+        }, partial -> Platform.runLater(() -> {
+            partialLabel.setText("🎤 " + partial + "…");
+            partialLabel.setVisible(true);
+            scrollToBottom();
+        }), error -> Platform.runLater(() -> statusLabel.setText("Voice error: " + error)));
 
         if (!voice.isAvailable()) {
             statusLabel.setText("Voice off: " + voice.getLastError());
@@ -127,6 +138,7 @@ public class AssistantPanel {
                 micButton.setSelected(false);
                 return;
             }
+            partialLabel.setVisible(false);
             voice.start();
             statusLabel.setText("Voice: listening...");
             micButton.setText("🛑 Stop");
@@ -135,7 +147,7 @@ public class AssistantPanel {
             voice.stop();
             statusLabel.setText("Voice: off");
             micButton.setText("🎤 Voice");
-            appendMessage("assistant", "Voice stopped.");
+            partialLabel.setVisible(false);
         }
     }
 
