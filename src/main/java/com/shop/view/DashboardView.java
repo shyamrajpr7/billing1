@@ -98,6 +98,7 @@ public class DashboardView {
 
             addNavButton(navBox, "📈  Sales & Analytics", () -> loadView("Sales & Reports", () -> new ReportsView().getView()), false);
             addNavButton(navBox, "👔  Employee Directory", () -> loadView("Employee Management", () -> new EmployeeView().getView()), false);
+            addNavButton(navBox, "📜  Activity Log", () -> loadView("Activity Log", () -> new ActivityLogView().getView()), false);
         }
 
         // User profile panel at bottom

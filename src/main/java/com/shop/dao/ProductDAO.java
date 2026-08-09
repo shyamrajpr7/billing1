@@ -80,6 +80,7 @@ public class ProductDAO {
                     .append("supplier_id", product.getSupplierId())
                     .append("expiry_date", product.getExpiryDate() != null ? product.getExpiryDate().toString() : null);
             products.insertOne(doc);
+            new ActivityLogDAO().log("PRODUCT_ADD", "Added product: " + product.getName() + " (qty " + product.getQuantity() + ")");
             return true;
         } catch (Exception e) {
             e.printStackTrace();
@@ -101,6 +102,7 @@ public class ProductDAO {
                     Updates.set("supplier_id", product.getSupplierId()),
                     Updates.set("expiry_date", product.getExpiryDate() != null ? product.getExpiryDate().toString() : null));
             products.updateOne(filter, update);
+            new ActivityLogDAO().log("PRODUCT_UPDATE", "Updated product: " + product.getName());
             return true;
         } catch (Exception e) {
             e.printStackTrace();
@@ -124,7 +126,9 @@ public class ProductDAO {
 
     public boolean delete(int id) {
         try {
+            Product p = findById(id);
             products.deleteOne(Filters.eq("_id", id));
+            new ActivityLogDAO().log("PRODUCT_DELETE", "Deleted product: " + (p != null ? p.getName() : "#" + id));
             return true;
         } catch (Exception e) {
             e.printStackTrace();

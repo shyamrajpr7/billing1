@@ -80,6 +80,7 @@ public class LoginView {
             User user = userDAO.authenticate(username, PasswordUtil.hash(password));
             if (user != null) {
                 SessionManager.getInstance().setCurrentUser(user);
+                new com.shop.dao.ActivityLogDAO().logAs(user.getId(), user.getFullName(), "LOGIN", "User signed in");
                 DashboardView dashboardView = new DashboardView(stage);
                 dashboardView.show();
             } else {

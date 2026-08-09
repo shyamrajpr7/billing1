@@ -73,6 +73,9 @@ public class SaleDAO {
                 }
 
                 session.commitTransaction();
+                new ActivityLogDAO().log("SALE", "Invoice " + sale.getInvoiceNumber() +
+                        " for ₹" + String.format("%.2f", sale.getTotal()) +
+                        " (" + sale.getItems().size() + " items)");
                 return true;
             } catch (Exception e) {
                 session.abortTransaction();
