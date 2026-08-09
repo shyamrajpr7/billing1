@@ -69,6 +69,23 @@ public class ExpenseDAO {
         return sum(LocalDate.now().toString().substring(0, 7));
     }
 
+    public java.util.LinkedHashMap<String, Double> getDailyTotals(int days) {
+        java.util.LinkedHashMap<String, Double> daily = new java.util.LinkedHashMap<>();
+        LocalDate today = LocalDate.now();
+        for (int i = days - 1; i >= 0; i--) {
+            daily.put(today.minusDays(i).toString(), 0.0);
+        }
+        for (Document doc : expenses.find()) {
+            String date = doc.getString("expense_date");
+            if (date == null || date.length() < 10) continue;
+            String day = date.substring(0, 10);
+            if (daily.containsKey(day)) {
+                daily.put(day, daily.get(day) + doc.getDouble("amount"));
+            }
+        }
+        return daily;
+    }
+
     public int countToday() {
         String today = LocalDate.now().toString();
         return (int) expenses.countDocuments(Filters.regex("expense_date", "^" + today));

@@ -163,6 +163,23 @@ public class SaleDAO {
         return sumRevenue(Filters.regex("created_at", "^" + month));
     }
 
+    public java.util.LinkedHashMap<String, Double> getDailyRevenue(int days) {
+        java.util.LinkedHashMap<String, Double> daily = new java.util.LinkedHashMap<>();
+        LocalDate today = LocalDate.now();
+        for (int i = days - 1; i >= 0; i--) {
+            daily.put(today.minusDays(i).toString(), 0.0);
+        }
+        for (Document doc : sales.find()) {
+            String created = doc.getString("created_at");
+            if (created == null || created.length() < 10) continue;
+            String day = created.substring(0, 10);
+            if (daily.containsKey(day)) {
+                daily.put(day, daily.get(day) + doc.getDouble("total"));
+            }
+        }
+        return daily;
+    }
+
     public String generateNextInvoiceNumber() {
         long count = sales.countDocuments();
         return String.format("INV-%06d", count + 1);
