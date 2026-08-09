@@ -88,6 +88,7 @@ public class DashboardView {
             addNavButton(navBox, "👥  Customers", () -> loadView("Customer Management", () -> new CustomerView().getView()), false);
             addNavButton(navBox, "🏷️  Discounts & Coupons", () -> loadView("Discount Management", () -> new DiscountView().getView()), false);
             addNavButton(navBox, "🚚  Suppliers", () -> loadView("Supplier Management", () -> new SupplierView().getView()), false);
+            addNavButton(navBox, "📋  Purchase Orders", () -> loadView("Purchase Orders", () -> new PurchaseOrdersView().getView()), false);
         }
 
         if (currentUser != null && currentUser.getRole() == Role.ADMIN) {
