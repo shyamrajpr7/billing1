@@ -1,0 +1,392 @@
+/* ========================================
+   SHOP MANAGEMENT SYSTEM - DARK THEME
+   (Overrides for light theme)
+   ======================================== */
+
+.root {
+    -fx-background-color: #1e1e1e;
+}
+
+.login-pane {
+    -fx-background-color: #1e1e1e;
+}
+
+.login-card {
+    -fx-background-color: #2b2b2b;
+    -fx-border-color: #3c3c3c;
+}
+
+.login-title {
+    -fx-text-fill: #ffffff;
+}
+
+.login-subtitle {
+    -fx-text-fill: #a0a0a0;
+}
+
+.error-label {
+    -fx-text-fill: #e74c3c;
+}
+
+.sidebar {
+    -fx-background-color: #232323;
+}
+
+.sidebar-header {
+    -fx-background-color: #1c1c1c;
+}
+
+.sidebar-title {
+    -fx-text-fill: #ffffff;
+}
+
+.sidebar-version {
+    -fx-text-fill: #888888;
+}
+
+.sidebar-btn {
+    -fx-text-fill: #cfcfcf;
+}
+
+.sidebar-btn:hover {
+    -fx-background-color: #333333;
+}
+
+.sidebar-btn-active {
+    -fx-background-color: #2f2f2f;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #4da3ff;
+}
+
+.sidebar-section {
+    -fx-text-fill: #888888;
+}
+
+.sidebar-user-panel {
+    -fx-background-color: #1c1c1c;
+    -fx-border-color: #3c3c3c;
+}
+
+.sidebar-user-name {
+    -fx-text-fill: #ffffff;
+}
+
+.sidebar-user-role {
+    -fx-text-fill: #aaaaaa;
+}
+
+.header-bar {
+    -fx-background-color: #2b2b2b;
+    -fx-border-color: #3c3c3c;
+}
+
+.header-title {
+    -fx-text-fill: #ffffff;
+}
+
+.content-area {
+    -fx-background-color: #1e1e1e;
+}
+
+.stat-card {
+    -fx-background-color: #2b2b2b;
+    -fx-border-color: #3c3c3c;
+}
+
+.stat-value {
+    -fx-text-fill: #ffffff;
+}
+
+.stat-label {
+    -fx-text-fill: #a0a0a0;
+}
+
+.btn-secondary {
+    -fx-background-color: #3a3a3a;
+    -fx-text-fill: #e0e0e0;
+    -fx-border-color: #4a4a4a;
+}
+
+.btn-secondary:hover {
+    -fx-background-color: #4a4a4a;
+}
+
+.btn-small {
+    -fx-padding: 4 12;
+    -fx-font-size: 12px;
+}
+
+.text-field, .password-field, .text-area {
+    -fx-background-color: #333333;
+    -fx-text-fill: #ffffff;
+    -fx-prompt-text-fill: #888888;
+    -fx-border-color: #4a4a4a;
+}
+
+.text-field:focused, .password-field:focused, .text-area:focused {
+    -fx-border-color: #4da3ff;
+}
+
+.search-field {
+    -fx-background-color: #333333;
+    -fx-text-fill: #ffffff;
+    -fx-prompt-text-fill: #888888;
+    -fx-border-color: #4a4a4a;
+}
+
+.search-field:focused {
+    -fx-border-color: #4da3ff;
+}
+
+.table-view {
+    -fx-background-color: #2b2b2b;
+    -fx-border-color: #3c3c3c;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #333333;
+}
+
+.table-view .column-header {
+    -fx-border-color: transparent transparent #4a4a4a transparent;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: #ffffff;
+}
+
+.table-view .table-row-cell {
+    -fx-background-color: #2b2b2b;
+    -fx-border-color: transparent transparent #333333 transparent;
+}
+
+.table-view .table-row-cell:odd {
+    -fx-background-color: #262626;
+}
+
+.table-view .table-row-cell:selected {
+    -fx-background-color: #1c3a5a;
+}
+
+.table-view .table-row-cell:selected .table-cell {
+    -fx-text-fill: #ffffff;
+}
+
+.table-view .table-cell {
+    -fx-text-fill: #e0e0e0;
+}
+
+.table-view .placeholder .label {
+    -fx-text-fill: #777777;
+}
+
+.combo-box {
+    -fx-background-color: #333333;
+    -fx-border-color: #4a4a4a;
+}
+
+.combo-box .list-cell {
+    -fx-text-fill: #e0e0e0;
+    -fx-background-color: #333333;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: #333333;
+    -fx-border-color: #4a4a4a;
+}
+
+.combo-box-popup .list-view .list-cell {
+    -fx-text-fill: #e0e0e0;
+    -fx-background-color: #333333;
+}
+
+.combo-box-popup .list-view .list-cell:hover {
+    -fx-background-color: #1c3a5a;
+}
+
+.scroll-bar .track {
+    -fx-background-color: #2b2b2b;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #555555;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #666666;
+}
+
+.section-title {
+    -fx-text-fill: #ffffff;
+}
+
+.sub-label {
+    -fx-text-fill: #9a9a9a;
+}
+
+.form-label {
+    -fx-text-fill: #e0e0e0;
+}
+
+.text-white {
+    -fx-text-fill: #ffffff;
+}
+
+.text-accent {
+    -fx-text-fill: #4da3ff;
+}
+
+.text-danger {
+    -fx-text-fill: #e74c3c;
+}
+
+.text-warning {
+    -fx-text-fill: #f39c12;
+}
+
+.separator .line {
+    -fx-border-color: #3c3c3c;
+}
+
+.card {
+    -fx-background-color: #2b2b2b;
+    -fx-border-color: #3c3c3c;
+}
+
+.cart-total {
+    -fx-text-fill: #4da3ff;
+}
+
+.badge-active {
+    -fx-background-color: #145a32;
+    -fx-text-fill: #7dcea0;
+}
+
+.badge-inactive {
+    -fx-background-color: #641e16;
+    -fx-text-fill: #f1948a;
+}
+
+.badge-warning {
+    -fx-background-color: #6e3a0b;
+    -fx-text-fill: #f0b27a;
+}
+
+.badge-info {
+    -fx-background-color: #1b4f72;
+    -fx-text-fill: #7fb3d5;
+}
+
+.dialog-pane {
+    -fx-background-color: #2b2b2b;
+}
+
+.dialog-pane > .button-bar > .container {
+    -fx-background-color: #1e1e1e;
+}
+
+.dialog-pane .header-panel {
+    -fx-background-color: #1e1e1e;
+}
+
+.dialog-pane .header-panel .label {
+    -fx-text-fill: #ffffff;
+}
+
+.dialog-pane .content.label {
+    -fx-text-fill: #e0e0e0;
+}
+
+.tooltip {
+    -fx-background-color: #2b2b2b;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #4a4a4a;
+}
+
+.date-picker {
+    -fx-background-color: #333333;
+    -fx-border-color: #4a4a4a;
+}
+
+.date-picker .text-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.date-picker-popup {
+    -fx-background-color: #2b2b2b;
+    -fx-border-color: #4a4a4a;
+}
+
+.date-picker-popup .month-year-pane {
+    -fx-background-color: #333333;
+}
+
+.date-picker-popup .spinner .label {
+    -fx-text-fill: #ffffff;
+}
+
+.date-picker-popup .day-cell {
+    -fx-text-fill: #e0e0e0;
+}
+
+.date-picker-popup .day-cell:hover {
+    -fx-background-color: #1c3a5a;
+}
+
+.assistant-panel {
+    -fx-background-color: #2b2b2b;
+    -fx-border-color: #3c3c3c;
+}
+
+.assistant-title {
+    -fx-text-fill: #ffffff;
+}
+
+.chat-scroll {
+    -fx-background-color: #1f1c16;
+    -fx-background: #1f1c16;
+    -fx-border-color: #3c3c3c;
+}
+
+.chat-scroll .viewport {
+    -fx-background-color: #1f1c16;
+}
+
+.chat-messages {
+    -fx-background-color: #1f1c16;
+}
+
+.chat-bubble-user {
+    -fx-background-color: #1f5e2f;
+}
+
+.chat-bubble-assistant {
+    -fx-background-color: #3a3a3a;
+    -fx-border-color: #4a4a4a;
+}
+
+.chat-bubble-user .label,
+.chat-bubble-assistant .label {
+    -fx-text-fill: #ffffff;
+}
+
+.chat-time {
+    -fx-text-fill: #8a8a8a;
+}
+
+.voice-partial {
+    -fx-text-fill: #aaaaaa;
+}
+
+.assistant-panel .toggle-button {
+    -fx-background-color: #3a3a3a;
+    -fx-text-fill: #e0e0e0;
+    -fx-border-color: #4a4a4a;
+}
+
+.assistant-panel .toggle-button:selected {
+    -fx-background-color: #c0392b;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #c0392b;
+}

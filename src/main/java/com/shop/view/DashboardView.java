@@ -53,7 +53,7 @@ public class DashboardView {
         loadView("Dashboard", () -> new HomeView(this).getView());
 
         Scene scene = new Scene(rootLayout, 1280, 800);
-        scene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
+        applyTheme(scene, currentUser != null && currentUser.isDarkTheme());
         stage.setScene(scene);
         stage.setTitle("Shop Management System");
         stage.show();
@@ -155,7 +155,31 @@ public class DashboardView {
         headerTitle.getStyleClass().add("header-title");
         header.getChildren().add(headerTitle);
 
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        header.getChildren().add(spacer);
+
+        boolean dark = currentUser != null && currentUser.isDarkTheme();
+        Button themeBtn = new Button(dark ? "🌙  Dark" : "☀️  Light");
+        themeBtn.getStyleClass().add("btn-secondary");
+        themeBtn.setOnAction(e -> {
+            boolean newDark = !(currentUser != null && currentUser.isDarkTheme());
+            if (currentUser != null) {
+                currentUser.setDarkTheme(newDark);
+                new com.shop.dao.UserDAO().updateTheme(currentUser.getId(), newDark);
+            }
+            themeBtn.setText(newDark ? "🌙  Dark" : "☀️  Light");
+            applyTheme(stage.getScene(), newDark);
+        });
+
+        header.getChildren().add(themeBtn);
         return header;
+    }
+
+    private void applyTheme(Scene scene, boolean dark) {
+        scene.getStylesheets().remove(getClass().getResource("/css/dark.css").toExternalForm());
+        scene.getStylesheets().remove(getClass().getResource("/css/style.css").toExternalForm());
+        scene.getStylesheets().add(getClass().getResource(dark ? "/css/dark.css" : "/css/style.css").toExternalForm());
     }
 
     public void loadView(String title, Supplier<Node> viewSupplier) {

@@ -81,6 +81,16 @@ public class UserDAO {
         }
     }
 
+    public boolean updateTheme(int userId, boolean dark) {
+        try {
+            users.updateOne(Filters.eq("_id", userId), Updates.set("dark_theme", dark));
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public boolean delete(int id) {
         try {
             users.deleteOne(Filters.eq("_id", id));
@@ -103,6 +113,7 @@ public class UserDAO {
         user.setFullName(doc.getString("full_name"));
         user.setRole(Role.valueOf(doc.getString("role")));
         user.setActive(Boolean.TRUE.equals(doc.getBoolean("active")));
+        user.setDarkTheme(Boolean.TRUE.equals(doc.getBoolean("dark_theme")));
         String createdAt = doc.getString("created_at");
         if (createdAt != null) {
             user.setCreatedAt(java.time.LocalDateTime.parse(createdAt));

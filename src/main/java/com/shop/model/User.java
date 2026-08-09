@@ -9,6 +9,7 @@ public class User {
     private String fullName;
     private Role role;
     private boolean active;
+    private boolean darkTheme;
     private LocalDateTime createdAt;
 
     public User() {
@@ -41,6 +42,9 @@ public class User {
 
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+
+    public boolean isDarkTheme() { return darkTheme; }
+    public void setDarkTheme(boolean darkTheme) { this.darkTheme = darkTheme; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
