@@ -11,14 +11,16 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Floating assistant panel styled like a chat app (WhatsApp-style bubbles):
- * transcript as chat messages, typed input and a microphone toggle.
- * Always visible on the right side of the dashboard.
+ * AI assistant as a floating action button (FAB) docked to the bottom-right
+ * corner of the dashboard. Clicking the FAB opens the chat panel; closing it
+ * returns to the floating button.
  */
 public class AssistantPanel {
 
     private final CommandAssistant assistant = CommandAssistant.getInstance();
 
+    private final StackPane overlay = new StackPane();
+    private final Button fabButton = new Button("🤖");
     private final VBox root = new VBox(10);
     private final VBox messagesBox = new VBox(10);
     private final ScrollPane scrollPane = new ScrollPane(messagesBox);
@@ -32,7 +34,34 @@ public class AssistantPanel {
 
     public AssistantPanel() {
         buildUi();
+        buildFloating();
         initializeVoice();
+    }
+
+    private void buildFloating() {
+        fabButton.getStyleClass().add("ai-fab");
+        fabButton.setTooltip(new Tooltip("🤖 Open AI Assistant — ask questions, manage inventory, checkout by voice"));
+        fabButton.setOnAction(e -> openPanel());
+        StackPane.setAlignment(fabButton, Pos.BOTTOM_RIGHT);
+        StackPane.setMargin(fabButton, new Insets(0, 18, 18, 0));
+
+        StackPane.setAlignment(root, Pos.BOTTOM_RIGHT);
+        StackPane.setMargin(root, new Insets(0, 12, 12, 0));
+        root.setMaxHeight(560);
+        root.setVisible(false);
+
+        overlay.getChildren().addAll(fabButton, root);
+        overlay.setPickOnBounds(false);
+    }
+
+    private void openPanel() {
+        root.setVisible(true);
+        fabButton.setVisible(false);
+    }
+
+    private void closePanel() {
+        root.setVisible(false);
+        fabButton.setVisible(true);
     }
 
     private void buildUi() {
@@ -49,9 +78,14 @@ public class AssistantPanel {
         clearBtn.getStyleClass().addAll("btn-secondary", "btn-small");
         clearBtn.setOnAction(e -> messagesBox.getChildren().removeIf(n -> n != partialLabel));
 
+        Button closeBtn = new Button("✕");
+        closeBtn.getStyleClass().addAll("btn-secondary", "btn-small", "ai-close-btn");
+        closeBtn.setTooltip(new Tooltip("Close assistant"));
+        closeBtn.setOnAction(e -> closePanel());
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox headerRow = new HBox(8, title, spacer, clearBtn);
+        HBox headerRow = new HBox(8, title, spacer, clearBtn, closeBtn);
         headerRow.setAlignment(Pos.CENTER_LEFT);
 
         Label subtitle = new Label("Speak or type. Say \"help\" for commands.");
@@ -200,6 +234,6 @@ public class AssistantPanel {
     }
 
     public Node getView() {
-        return root;
+        return overlay;
     }
 }

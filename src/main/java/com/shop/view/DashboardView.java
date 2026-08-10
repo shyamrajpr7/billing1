@@ -44,15 +44,17 @@ public class DashboardView {
         rootLayout.setLeft(sidebar);
         rootLayout.setCenter(centerLayout);
 
-        // AI Assistant panel (voice + text) on the right
+        // AI Assistant floating action button + chat panel overlay
         AssistantPanel assistantPanel = new AssistantPanel();
         CommandAssistant.getInstance().setDashboard(this);
-        rootLayout.setRight(assistantPanel.getView());
+        StackPane.setAlignment(assistantPanel.getView(), Pos.BOTTOM_RIGHT);
+        StackPane root = new StackPane(rootLayout, assistantPanel.getView());
+        root.setPickOnBounds(false);
 
         // Load default view
         loadView("Dashboard", () -> new HomeView(this).getView());
 
-        Scene scene = new Scene(rootLayout, 1280, 800);
+        Scene scene = new Scene(root, 1280, 800);
         applyTheme(scene, currentUser != null && currentUser.isDarkTheme());
         stage.setScene(scene);
         stage.setTitle("Shop Management System");
