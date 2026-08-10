@@ -4,6 +4,7 @@ import com.shop.dao.ProductDAO;
 import com.shop.dao.SupplierDAO;
 import com.shop.model.Product;
 import com.shop.model.Supplier;
+import com.shop.util.BarcodeLabelUtil;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -118,15 +119,23 @@ public class InventoryView {
         TableColumn<Product, Void> actionCol = new TableColumn<>("Actions");
         actionCol.setCellFactory(col -> new TableCell<Product, Void>() {
             private final Button editBtn = new Button("✏️");
+            private final Button labelBtn = new Button("🏷️");
             private final Button delBtn = new Button("🗑️");
-            private final HBox btnBox = new HBox(6, editBtn, delBtn);
+            private final HBox btnBox = new HBox(6, editBtn, labelBtn, delBtn);
             {
                 editBtn.getStyleClass().addAll("btn-secondary", "btn-small");
+                labelBtn.getStyleClass().addAll("btn-secondary", "btn-small");
                 delBtn.getStyleClass().addAll("btn-danger", "btn-small");
+                labelBtn.setTooltip(new Tooltip("Print barcode label"));
 
                 editBtn.setOnAction(e -> {
                     Product p = getTableView().getItems().get(getIndex());
                     showProductDialog(p);
+                });
+
+                labelBtn.setOnAction(e -> {
+                    Product p = getTableView().getItems().get(getIndex());
+                    printBarcodeLabel(p);
                 });
 
                 delBtn.setOnAction(e -> {
@@ -286,6 +295,10 @@ public class InventoryView {
         scene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
         dialog.setScene(scene);
         dialog.show();
+    }
+
+    private void printBarcodeLabel(Product p) {
+        BarcodeLabelUtil.printLabel(table.getScene().getWindow(), p, 1);
     }
 
     private void showAlert(Alert.AlertType type, String title, String content) {
