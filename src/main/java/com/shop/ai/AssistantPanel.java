@@ -289,7 +289,11 @@ public class AssistantPanel {
     }
 
     private void scrollToBottom() {
-        Platform.runLater(() -> scrollPane.setVvalue(1.0));
+        Platform.runLater(() -> {
+            scrollPane.applyCss();
+            scrollPane.layout();
+            scrollPane.setVvalue(1.0);
+        });
     }
 
     public Node getView() {
