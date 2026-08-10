@@ -464,6 +464,15 @@
     -fx-font-weight: bold;
 }
 
+.badge-danger {
+    -fx-background-color: #fadbd8;
+    -fx-text-fill: #922b21;
+    -fx-padding: 2 8;
+    -fx-background-radius: 10;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
 /* ===== DIALOG ===== */
 .dialog-pane {
     -fx-background-color: #ffffff;

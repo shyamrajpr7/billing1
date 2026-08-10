@@ -258,6 +258,11 @@ public class CommandAssistant {
             navigate("Inventory Management", () -> new com.shop.view.InventoryView().getView());
             return "Opening Inventory.";
         }
+        if (matchesAny(lower, "open reorder", "reorder suggestions", "restock suggestions", "what should i reorder",
+                "go to reorder", "open restock")) {
+            navigate("Reorder Suggestions", () -> new com.shop.view.ReorderSuggestionsView().getView());
+            return "Opening Smart Reorder Suggestions.";
+        }
         if (matchesAny(lower, "open customers", "go to customers", "show customers")) {
             navigate("Customer Management", () -> new com.shop.view.CustomerView().getView());
             return "Opening Customer Management.";

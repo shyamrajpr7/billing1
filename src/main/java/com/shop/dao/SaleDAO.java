@@ -180,6 +180,28 @@ public class SaleDAO {
         return daily;
     }
 
+    /**
+     * Returns productId -> total units sold over the last {@code days} days,
+     * used by the smart reorder suggestions to estimate daily demand.
+     */
+    public Map<Integer, Integer> getProductSalesLastDays(int days) {
+        Map<Integer, Integer> sold = new HashMap<>();
+        String start = LocalDate.now().minusDays(Math.max(days - 1, 0)).toString();
+        for (Document doc : sales.find(Filters.gte("created_at", start))) {
+            Object raw = doc.get("items");
+            if (!(raw instanceof List<?> list)) continue;
+            for (Object o : list) {
+                if (!(o instanceof Document itemDoc)) continue;
+                Integer pid = itemDoc.getInteger("product_id");
+                Integer qty = itemDoc.getInteger("quantity");
+                if (pid != null && qty != null) {
+                    sold.merge(pid, qty, Integer::sum);
+                }
+            }
+        }
+        return sold;
+    }
+
     public String generateNextInvoiceNumber() {
         long count = sales.countDocuments();
         return String.format("INV-%06d", count + 1);
