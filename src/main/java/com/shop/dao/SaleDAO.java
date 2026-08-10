@@ -46,6 +46,7 @@ public class SaleDAO {
                         .append("user_id", sale.getUserId())
                         .append("subtotal", sale.getSubtotal())
                         .append("discount_amount", sale.getDiscountAmount())
+                        .append("loyalty_points_redeemed", sale.getPointsRedeemed())
                         .append("tax", sale.getTax())
                         .append("total", sale.getTotal())
                         .append("payment_method", sale.getPaymentMethod())
@@ -64,11 +65,22 @@ public class SaleDAO {
                 }
 
                 if (sale.getCustomerId() > 0) {
-                    int points = (int) (sale.getTotal() / 100);
-                    if (points > 0) {
+                    int earned = (int) (sale.getTotal() / 100);
+                    int redeemed = sale.getPointsRedeemed();
+                    int net = earned - redeemed;
+                    if (redeemed > 0) {
+                        Bson filter = Filters.and(
+                                Filters.eq("_id", sale.getCustomerId()),
+                                Filters.gte("loyalty_points", redeemed));
+                        var result = db.getCollection("customers").updateOne(session, filter,
+                                Updates.inc("loyalty_points", net));
+                        if (result.getMatchedCount() == 0) {
+                            throw new RuntimeException("Customer does not have enough loyalty points to redeem.");
+                        }
+                    } else if (net > 0) {
                         db.getCollection("customers").updateOne(session,
                                 Filters.eq("_id", sale.getCustomerId()),
-                                Updates.inc("loyalty_points", points));
+                                Updates.inc("loyalty_points", net));
                     }
                 }
 
@@ -257,6 +269,7 @@ public class SaleDAO {
         s.setUserName(userName != null ? userName : "");
         s.setSubtotal(doc.getDouble("subtotal"));
         s.setDiscountAmount(doc.getDouble("discount_amount"));
+        s.setPointsRedeemed(doc.getInteger("loyalty_points_redeemed") != null ? doc.getInteger("loyalty_points_redeemed") : 0);
         s.setTax(doc.getDouble("tax"));
         s.setTotal(doc.getDouble("total"));
         s.setPaymentMethod(doc.getString("payment_method"));

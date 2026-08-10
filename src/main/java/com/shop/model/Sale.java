@@ -13,6 +13,7 @@ public class Sale {
     private String userName;
     private double subtotal;
     private double discountAmount;
+    private int pointsRedeemed;
     private double tax;
     private double total;
     private String paymentMethod;
@@ -48,6 +49,11 @@ public class Sale {
 
     public double getDiscountAmount() { return discountAmount; }
     public void setDiscountAmount(double discountAmount) { this.discountAmount = discountAmount; }
+
+    public int getPointsRedeemed() { return pointsRedeemed; }
+    public void setPointsRedeemed(int pointsRedeemed) { this.pointsRedeemed = pointsRedeemed; }
+
+    public double getLoyaltyDiscount() { return pointsRedeemed; }
 
     public double getTax() { return tax; }
     public void setTax(double tax) { this.tax = tax; }

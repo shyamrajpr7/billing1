@@ -35,13 +35,17 @@ public class POSView {
 
     private final Label subtotalLabel = new Label("₹0.00");
     private final Label discountLabel = new Label("-₹0.00");
+    private final Label loyaltyDiscountLabel = new Label("-₹0.00");
     private final Label taxLabel = new Label("₹0.00");
     private final Label grandTotalLabel = new Label("₹0.00");
 
     private Discount appliedDiscount = null;
     private Customer selectedCustomer = null;
+    private int pointsRedeemed = 0;
     private final ComboBox<Customer> customerCombo = new ComboBox<>();
     private final ComboBox<String> paymentMethodCombo = new ComboBox<>();
+    private final Label loyaltyBalanceLabel = new Label("🅿️  Loyalty Points: 0");
+    private final TextField pointsField = new TextField();
 
     private final Label scanStatus = new Label("Ready to scan. Use a USB scanner or type a barcode and press Enter.");
     private Timer scanDebounce = new Timer(true);
@@ -205,9 +209,42 @@ public class POSView {
         custLabel.getStyleClass().add("form-label");
 
         customerCombo.setMaxWidth(Double.MAX_VALUE);
-        customerCombo.setOnAction(e -> selectedCustomer = customerCombo.getValue());
+        customerCombo.setOnAction(e -> {
+            selectedCustomer = customerCombo.getValue();
+            pointsRedeemed = 0;
+            pointsField.clear();
+            updateLoyaltyBalance();
+            recalculateTotals();
+        });
 
         customerBox.getChildren().addAll(custLabel, customerCombo);
+
+        // Loyalty points redemption
+        VBox loyaltyBox = new VBox(6);
+        loyaltyBox.getStyleClass().add("card");
+        loyaltyBox.setPadding(new Insets(10));
+
+        loyaltyBalanceLabel.getStyleClass().add("sub-label");
+        loyaltyBalanceLabel.setWrapText(true);
+
+        pointsField.setPromptText("Points to redeem (1 pt = ₹1)");
+        pointsField.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(pointsField, Priority.ALWAYS);
+
+        Button maxBtn = new Button("Max");
+        maxBtn.getStyleClass().addAll("btn-secondary", "btn-small");
+        maxBtn.setTooltip(new Tooltip("Redeem as many points as possible for this bill"));
+
+        Button applyBtn = new Button("Apply");
+        applyBtn.getStyleClass().addAll("btn-primary", "btn-small");
+
+        maxBtn.setOnAction(e -> applyPoints(true));
+        applyBtn.setOnAction(e -> applyPoints(false));
+
+        HBox pointsRow = new HBox(8, pointsField, maxBtn, applyBtn);
+        pointsRow.setAlignment(Pos.CENTER_LEFT);
+
+        loyaltyBox.getChildren().addAll(loyaltyBalanceLabel, pointsRow);
 
         // Cart Table
         TableView<SaleItem> cartTable = new TableView<>(cartItems);
@@ -315,15 +352,17 @@ public class POSView {
         summaryGrid.add(subtotalLabel, 1, 0);
         summaryGrid.add(new Label("Discount:"), 0, 1);
         summaryGrid.add(discountLabel, 1, 1);
-        summaryGrid.add(new Label("Tax (5%):"), 0, 2);
-        summaryGrid.add(taxLabel, 1, 2);
+        summaryGrid.add(new Label("Loyalty:"), 0, 2);
+        summaryGrid.add(loyaltyDiscountLabel, 1, 2);
+        summaryGrid.add(new Label("Tax (5%):"), 0, 3);
+        summaryGrid.add(taxLabel, 1, 3);
 
         Label totalText = new Label("Grand Total:");
         totalText.getStyleClass().add("section-title");
         grandTotalLabel.getStyleClass().add("cart-total");
 
-        summaryGrid.add(totalText, 0, 3);
-        summaryGrid.add(grandTotalLabel, 1, 3);
+        summaryGrid.add(totalText, 0, 4);
+        summaryGrid.add(grandTotalLabel, 1, 4);
 
         // Checkout Button
         Button checkoutBtn = new Button("💳 COMPLETE CHECKOUT");
@@ -333,7 +372,7 @@ public class POSView {
         checkoutBtn.setOnAction(e -> processCheckout());
 
         panel.getChildren().addAll(
-                header, customerBox, cartTable, couponBox,
+                header, customerBox, loyaltyBox, cartTable, couponBox,
                 new Label("Payment Method:"), paymentMethodCombo,
                 new Separator(), summaryGrid, checkoutBtn
         );
@@ -358,6 +397,7 @@ public class POSView {
         customerCombo.getItems().addAll(customerDAO.findAll());
         customerCombo.getSelectionModel().selectFirst();
         selectedCustomer = walkIn;
+        updateLoyaltyBalance();
     }
 
     private void processScan(String input) {
@@ -439,19 +479,82 @@ public class POSView {
             discountAmt = appliedDiscount.apply(subtotal);
         }
 
-        double taxableAmount = Math.max(0, subtotal - discountAmt);
+        int maxRedeemable = getMaxRedeemablePoints();
+        if (pointsRedeemed > maxRedeemable) {
+            pointsRedeemed = maxRedeemable;
+            pointsField.setText(pointsRedeemed > 0 ? String.valueOf(pointsRedeemed) : "");
+        }
+        double loyaltyAmt = pointsRedeemed;
+
+        double taxableAmount = Math.max(0, subtotal - discountAmt - loyaltyAmt);
         double tax = taxableAmount * TAX_RATE;
         double grandTotal = taxableAmount + tax;
 
         subtotalLabel.setText(String.format("₹%.2f", subtotal));
         discountLabel.setText(String.format("-₹%.2f", discountAmt));
+        loyaltyDiscountLabel.setText(String.format("-₹%.2f", loyaltyAmt));
         taxLabel.setText(String.format("₹%.2f", tax));
         grandTotalLabel.setText(String.format("₹%.2f", grandTotal));
+    }
+
+    private int getMaxRedeemablePoints() {
+        if (selectedCustomer == null || selectedCustomer.getId() <= 0) return 0;
+        double subtotal = calculateSubtotal();
+        double discountAmt = appliedDiscount != null ? appliedDiscount.apply(subtotal) : 0;
+        double payable = Math.max(0, subtotal - discountAmt);
+        return (int) Math.min(selectedCustomer.getLoyaltyPoints(), Math.floor(payable));
+    }
+
+    private void updateLoyaltyBalance() {
+        if (selectedCustomer == null || selectedCustomer.getId() <= 0) {
+            loyaltyBalanceLabel.setText("🅿️  Loyalty Points: 0 — select a customer to redeem.");
+            pointsField.setDisable(true);
+            return;
+        }
+        pointsField.setDisable(false);
+        loyaltyBalanceLabel.setText("🅿️  " + selectedCustomer.getName()
+                + " has " + selectedCustomer.getLoyaltyPoints() + " points (worth ₹"
+                + selectedCustomer.getLoyaltyPoints() + " off). 1 point = ₹1.");
+    }
+
+    private void applyPoints(boolean useMax) {
+        if (selectedCustomer == null || selectedCustomer.getId() <= 0) {
+            showAlert(Alert.AlertType.WARNING, "Select Customer", "Select a customer first to redeem loyalty points.");
+            return;
+        }
+        int max = getMaxRedeemablePoints();
+        if (max <= 0) {
+            showAlert(Alert.AlertType.INFORMATION, "Nothing to Redeem",
+                    selectedCustomer.getLoyaltyPoints() <= 0
+                            ? "This customer has no loyalty points yet."
+                            : "This bill can't be reduced further with points (₹0 payable).");
+            return;
+        }
+        if (useMax) {
+            pointsField.setText(String.valueOf(max));
+        }
+        try {
+            int pts = Integer.parseInt(pointsField.getText().trim());
+            if (pts < 0) pts = 0;
+            if (pts > max) {
+                showAlert(Alert.AlertType.WARNING, "Too Many Points",
+                        "You can redeem at most " + max + " points for this bill (worth ₹" + max + ").");
+                pts = max;
+            }
+            pointsRedeemed = pts;
+            pointsField.setText(pts > 0 ? String.valueOf(pts) : "");
+        } catch (NumberFormatException ex) {
+            pointsRedeemed = 0;
+            pointsField.clear();
+        }
+        recalculateTotals();
     }
 
     private void clearCart() {
         cartItems.clear();
         appliedDiscount = null;
+        pointsRedeemed = 0;
+        pointsField.clear();
         recalculateTotals();
     }
 
@@ -463,7 +566,10 @@ public class POSView {
 
         double subtotal = calculateSubtotal();
         double discountAmt = appliedDiscount != null ? appliedDiscount.apply(subtotal) : 0;
-        double taxableAmount = Math.max(0, subtotal - discountAmt);
+        int maxRedeemable = getMaxRedeemablePoints();
+        if (pointsRedeemed > maxRedeemable) pointsRedeemed = maxRedeemable;
+        double loyaltyAmt = pointsRedeemed;
+        double taxableAmount = Math.max(0, subtotal - discountAmt - loyaltyAmt);
         double tax = taxableAmount * TAX_RATE;
         double grandTotal = taxableAmount + tax;
 
@@ -473,6 +579,7 @@ public class POSView {
         sale.setUserId(currentUser != null ? currentUser.getId() : 1);
         sale.setSubtotal(subtotal);
         sale.setDiscountAmount(discountAmt);
+        sale.setPointsRedeemed(pointsRedeemed);
         sale.setTax(tax);
         sale.setTotal(grandTotal);
         sale.setPaymentMethod(paymentMethodCombo.getValue());
@@ -486,6 +593,7 @@ public class POSView {
             showReceiptWindow(sale);
             clearCart();
             loadProducts(""); // Refresh inventory stock levels
+            loadCustomers(); // Refresh loyalty point balances
         } else {
             showAlert(Alert.AlertType.ERROR, "Checkout Failed", "Could not complete transaction. Please try again.");
         }
@@ -531,12 +639,25 @@ public class POSView {
         Separator sep2 = new Separator();
 
         VBox totalsBox = new VBox(4);
-        totalsBox.getChildren().addAll(
+        VBox totalLines = new VBox(4);
+        totalLines.getChildren().addAll(
                 new Label(String.format("Subtotal: ₹%.2f", sale.getSubtotal())),
-                new Label(String.format("Discount: -₹%.2f", sale.getDiscountAmount())),
+                new Label(String.format("Discount: -₹%.2f", sale.getDiscountAmount())));
+        if (sale.getPointsRedeemed() > 0) {
+            totalLines.getChildren().add(new Label(String.format("Loyalty Points: -₹%.2f (%d pts)", sale.getLoyaltyDiscount(), sale.getPointsRedeemed())));
+        }
+        totalLines.getChildren().addAll(
                 new Label(String.format("Tax (5%%): ₹%.2f", sale.getTax())),
-                new Label(String.format("TOTAL: ₹%.2f", sale.getTotal())) {{ setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #16c79a;"); }}
-        );
+                new Label(String.format("TOTAL: ₹%.2f", sale.getTotal())) {{ setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #16c79a;"); }});
+        totalsBox.getChildren().addAll(totalLines);
+        if (sale.getCustomerId() > 0) {
+            int earned = (int) (sale.getTotal() / 100);
+            Label pointsLine = new Label(earned > 0
+                    ? "🅿️ Earned " + earned + " loyalty point(s) on this purchase!"
+                    : "🅿️ Loyalty points redeemed. Keep shopping to earn more!");
+            pointsLine.getStyleClass().add("sub-label");
+            totalsBox.getChildren().add(pointsLine);
+        }
 
         Label thankYou = new Label("Thank you for shopping with us!");
         thankYou.getStyleClass().add("sub-label");
