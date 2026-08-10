@@ -287,7 +287,7 @@ public class CommandAssistant {
 
     private void navigate(String title, Supplier<Node> viewSupplier) {
         if (dashboard != null) {
-            dashboard.loadView(title, viewSupplier);
+            Platform.runLater(() -> dashboard.loadView(title, viewSupplier));
         }
     }
 
@@ -680,7 +680,7 @@ public class CommandAssistant {
     // Helpers
     // ----------------------------------------------------------------
     private void refresh() {
-        if (dashboard != null) dashboard.reloadCurrentView();
+        if (dashboard != null) Platform.runLater(dashboard::reloadCurrentView);
     }
 
     private boolean matchesAny(String lower, String... phrases) {
