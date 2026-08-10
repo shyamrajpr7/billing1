@@ -142,7 +142,15 @@ public class AssistantPanel {
             partialLabel.setText("🎤 " + partial + "…");
             partialLabel.setVisible(true);
             scrollToBottom();
-        }), error -> Platform.runLater(() -> statusLabel.setText("Voice error: " + error)));
+        }), error -> Platform.runLater(() -> {
+            if ("microphone-silence".equals(error)) {
+                handleMicBlocked();
+            } else {
+                statusLabel.setText("Voice error: " + error);
+                resetMicButton();
+                appendMessage("assistant", "Voice error: " + error);
+            }
+        }));
 
         if (!voice.isAvailable()) {
             statusLabel.setText("Voice off: " + voice.getLastError());
@@ -164,6 +172,57 @@ public class AssistantPanel {
             removeTypingIndicator(typing);
             appendMessage("assistant", reply);
         });
+    }
+
+    private void handleMicBlocked() {
+        resetMicButton();
+        openMicSettings();
+        Button enableBtn = new Button("🔓  Open Microphone Settings");
+        enableBtn.getStyleClass().add("btn-primary");
+        enableBtn.setMaxWidth(Double.MAX_VALUE);
+        enableBtn.setOnAction(e -> openMicSettings());
+        appendMessageWithAction(
+                "⚠️ I'm not hearing any sound from your microphone.\n\n"
+                        + "This means macOS is blocking mic access for this app.\n\n"
+                        + "I've opened your Privacy settings — tick the checkbox next to "
+                        + "your terminal / IDE, then come back and click 🎤 Voice again.",
+                enableBtn);
+    }
+
+    private void resetMicButton() {
+        micButton.setSelected(false);
+        micButton.setText("🎤 Voice");
+        statusLabel.setText("Voice: off");
+        partialLabel.setVisible(false);
+    }
+
+    private void openMicSettings() {
+        try {
+            new ProcessBuilder("open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")
+                    .start();
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void appendMessageWithAction(String text, Button actionButton) {
+        Label msg = new Label(text);
+        msg.setWrapText(true);
+        msg.setMinWidth(0);
+
+        Label time = new Label(LocalTime.now().format(TIME));
+        time.getStyleClass().add("chat-time");
+
+        VBox bubble = new VBox(6, msg, actionButton, time);
+        bubble.setMaxWidth(260);
+        bubble.setAlignment(Pos.BOTTOM_LEFT);
+        bubble.getStyleClass().add("chat-bubble-assistant");
+
+        HBox row = new HBox(bubble);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().add("chat-row-assistant");
+
+        messagesBox.getChildren().add(row);
+        scrollToBottom();
     }
 
     private void toggleVoice() {

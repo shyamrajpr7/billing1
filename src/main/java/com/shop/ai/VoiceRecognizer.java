@@ -24,6 +24,8 @@ public class VoiceRecognizer {
     private Thread listenerThread;
     private volatile TargetDataLine micLine;
     private String lastError;
+    private long firstSilentDataAt = -1;
+    private boolean silenceReported;
     private final Consumer<String> onResult;
     private final Consumer<String> onPartial;
     private final Consumer<String> onError;
@@ -124,6 +126,16 @@ public class VoiceRecognizer {
             while (running) {
                 int bytesRead = line.read(buffer, 0, buffer.length);
                 if (bytesRead <= 0) continue;
+                if (isSilence(buffer, bytesRead)) {
+                    if (firstSilentDataAt < 0) firstSilentDataAt = System.currentTimeMillis();
+                    if (!silenceReported && System.currentTimeMillis() - firstSilentDataAt > 2000) {
+                        silenceReported = true;
+                        running = false;
+                        notifyError("microphone-silence");
+                    }
+                } else {
+                    firstSilentDataAt = -1;
+                }
                 if (recognizer.acceptWaveForm(buffer, bytesRead)) {
                     String result = recognizer.getResult();
                     String text = extractText(result);
@@ -171,6 +183,14 @@ public class VoiceRecognizer {
 
     private void notifyError(String message) {
         if (onError != null) onError.accept(message);
+    }
+
+    private boolean isSilence(byte[] data, int length) {
+        for (int i = 0; i + 1 < length; i += 2) {
+            short s = (short) ((data[i] & 0xff) | (data[i + 1] << 8));
+            if (Math.abs(s) > 0) return false;
+        }
+        return true;
     }
 
     private String extractText(String json) {
