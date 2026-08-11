@@ -5,6 +5,7 @@ import com.shop.dao.SupplierDAO;
 import com.shop.model.Product;
 import com.shop.model.Supplier;
 import com.shop.util.BarcodeLabelUtil;
+import com.shop.util.CsvImportUtil;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -15,6 +16,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
@@ -46,7 +48,11 @@ public class InventoryView {
         addProductBtn.getStyleClass().add("btn-primary");
         addProductBtn.setOnAction(e -> showProductDialog(null));
 
-        controlBar.getChildren().addAll(searchField, addProductBtn);
+        Button importBtn = new Button("📥  Import CSV");
+        importBtn.getStyleClass().add("btn-secondary");
+        importBtn.setOnAction(e -> importCsv());
+
+        controlBar.getChildren().addAll(searchField, importBtn, addProductBtn);
 
         // Product Table
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
@@ -165,6 +171,45 @@ public class InventoryView {
         root.getChildren().addAll(controlBar, table);
         loadProducts("");
         return root;
+    }
+
+    private void importCsv() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Import Products from CSV");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV files", "*.csv", "*.txt"));
+        java.io.File file = chooser.showOpenDialog(table.getScene().getWindow());
+        if (file == null) return;
+
+        CsvImportUtil.ImportResult result = CsvImportUtil.parse(file.toPath());
+        if (result.errors.isEmpty() && result.products.isEmpty()) {
+            showAlert(Alert.AlertType.WARNING, "Import", "No valid product rows found in the file.");
+            return;
+        }
+
+        int imported = 0;
+        java.util.List<String> insertErrors = new java.util.ArrayList<>();
+        for (Product p : result.products) {
+            if (productDAO.insert(p)) {
+                imported++;
+            } else {
+                insertErrors.add(p.getName());
+            }
+        }
+
+        StringBuilder summary = new StringBuilder();
+        summary.append("Imported ").append(imported).append(" of ").append(result.products.size()).append(" rows.\n\n");
+        summary.append("Columns expected:\nName, Category, Barcode, Quantity, Cost Price, Sell Price, Min Stock, Supplier, Expiry (yyyy-MM-dd)\n\n");
+        if (!insertErrors.isEmpty()) {
+            summary.append("Failed to insert: ").append(String.join(", ", insertErrors)).append("\n\n");
+        }
+        if (!result.errors.isEmpty()) {
+            summary.append("Skipped rows (").append(result.skipped).append("):\n");
+            for (String err : result.errors) summary.append("  • ").append(err).append("\n");
+        }
+
+        showAlert(imported > 0 ? Alert.AlertType.INFORMATION : Alert.AlertType.ERROR,
+                "CSV Import Complete", summary.toString());
+        loadProducts("");
     }
 
     private void loadProducts(String query) {
