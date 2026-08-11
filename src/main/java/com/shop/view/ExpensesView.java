@@ -11,6 +11,7 @@ import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.chart.PieChart;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
@@ -33,6 +34,8 @@ public class ExpensesView {
     private final Label todayProfitLabel = new Label();
     private final Label monthExpenseLabel = new Label();
     private final Label monthProfitLabel = new Label();
+    private final PieChart categoryChart = new PieChart();
+    private final Label chartRangeLabel = new Label();
 
     public Node getView() {
         VBox root = new VBox(16);
@@ -139,7 +142,77 @@ public class ExpensesView {
         table.setItems(expenseList);
         table.setPlaceholder(new Label("No expenses recorded yet. Add one above."));
 
-        root.getChildren().addAll(title, summaryBar, addRow, exportRow, table);
+        HBox chartRow = new HBox(16);
+        chartRow.setAlignment(Pos.CENTER_LEFT);
+
+        VBox pieCard = new VBox(8);
+        pieCard.getStyleClass().add("card");
+        pieCard.setPrefWidth(420);
+        HBox.setHgrow(pieCard, Priority.ALWAYS);
+
+        HBox chartHeader = new HBox(10);
+        chartHeader.setAlignment(Pos.CENTER_LEFT);
+        Label pieTitle = new Label("🥧 Expenses by Category");
+        pieTitle.getStyleClass().add("section-title");
+        chartRangeLabel.getStyleClass().add("badge-info");
+        Region chartSpacer = new Region();
+        HBox.setHgrow(chartSpacer, Priority.ALWAYS);
+        ToggleButton thisMonthToggle = new ToggleButton("This Month");
+        ToggleButton allTimeToggle = new ToggleButton("All Time");
+        thisMonthToggle.getStyleClass().add("btn-secondary");
+        allTimeToggle.getStyleClass().add("btn-secondary");
+        ToggleGroup group = new ToggleGroup();
+        thisMonthToggle.setToggleGroup(group);
+        allTimeToggle.setToggleGroup(group);
+        thisMonthToggle.setSelected(true);
+        thisMonthToggle.setOnAction(e -> loadExpenses());
+        allTimeToggle.setOnAction(e -> loadExpenses());
+        chartHeader.getChildren().addAll(pieTitle, chartRangeLabel, chartSpacer, thisMonthToggle, allTimeToggle);
+
+        categoryChart.setAnimated(false);
+        categoryChart.setLegendVisible(true);
+        categoryChart.setLabelsVisible(true);
+        categoryChart.setPrefHeight(260);
+
+        VBox catTableCard = new VBox(8);
+        catTableCard.getStyleClass().add("card");
+        Label catTableTitle = new Label("📊 Category Breakdown");
+        catTableTitle.getStyleClass().add("section-title");
+        TableView<java.util.Map.Entry<String, Double>> catTable = new TableView<>();
+        catTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        catTable.setPrefHeight(260);
+        TableColumn<java.util.Map.Entry<String, Double>, String> catNameCol = new TableColumn<>("Category");
+        catNameCol.setCellValueFactory(p -> new SimpleStringProperty(p.getValue().getKey()));
+        TableColumn<java.util.Map.Entry<String, Double>, String> catAmtCol = new TableColumn<>("Amount");
+        catAmtCol.setCellValueFactory(p -> new SimpleStringProperty(String.format("₹%.2f", p.getValue().getValue())));
+        catTable.getColumns().addAll(catNameCol, catAmtCol);
+
+        ObservableList<java.util.Map.Entry<String, Double>> catRows = FXCollections.observableArrayList();
+        catTable.setItems(catRows);
+        Runnable reloadChart = () -> {
+            boolean thisMonth = thisMonthToggle.isSelected();
+            java.util.LinkedHashMap<String, Double> totals = thisMonth
+                    ? expenseDAO.getCategoryTotalsThisMonth()
+                    : expenseDAO.getCategoryTotalsAllTime();
+            chartRangeLabel.setText(thisMonth ? "Current month" : "All time");
+            categoryChart.getData().clear();
+            catRows.clear();
+            totals.entrySet().stream().sorted((a, b) -> Double.compare(b.getValue(), a.getValue())).forEach(entry -> {
+                categoryChart.getData().add(new PieChart.Data(
+                        entry.getKey() + " ₹" + String.format("%.0f", entry.getValue()), entry.getValue()));
+                catRows.add(entry);
+            });
+        };
+        thisMonthToggle.setOnAction(e -> reloadChart.run());
+        allTimeToggle.setOnAction(e -> reloadChart.run());
+        reloadChart.run();
+
+        HBox.setHgrow(catTableCard, Priority.ALWAYS);
+        pieCard.getChildren().addAll(chartHeader, categoryChart);
+        catTableCard.getChildren().addAll(catTableTitle, catTable);
+        chartRow.getChildren().addAll(pieCard, catTableCard);
+
+        root.getChildren().addAll(title, summaryBar, addRow, exportRow, chartRow, table);
         loadExpenses();
         return root;
     }

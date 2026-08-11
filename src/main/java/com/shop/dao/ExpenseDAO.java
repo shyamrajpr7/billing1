@@ -104,6 +104,29 @@ public class ExpenseDAO {
         return categories;
     }
 
+    public java.util.LinkedHashMap<String, Double> getCategoryTotalsThisMonth() {
+        java.util.LinkedHashMap<String, Double> totals = new java.util.LinkedHashMap<>();
+        String month = LocalDate.now().toString().substring(0, 7);
+        for (Document doc : expenses.find(Filters.regex("expense_date", "^" + month))) {
+            String cat = doc.getString("category");
+            if (cat == null || cat.isEmpty()) cat = "General";
+            totals.merge(cat, doc.getDouble("amount"), Double::sum);
+        }
+        totals.entrySet().removeIf(e -> e.getValue() <= 0.001);
+        return totals;
+    }
+
+    public java.util.LinkedHashMap<String, Double> getCategoryTotalsAllTime() {
+        java.util.LinkedHashMap<String, Double> totals = new java.util.LinkedHashMap<>();
+        for (Document doc : expenses.find()) {
+            String cat = doc.getString("category");
+            if (cat == null || cat.isEmpty()) cat = "General";
+            totals.merge(cat, doc.getDouble("amount"), Double::sum);
+        }
+        totals.entrySet().removeIf(e -> e.getValue() <= 0.001);
+        return totals;
+    }
+
     private double sum(String prefix) {
         double total = 0;
         for (Document doc : expenses.find(Filters.regex("expense_date", "^" + prefix))) {
