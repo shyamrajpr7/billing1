@@ -56,6 +56,7 @@ public class DashboardView {
 
         Scene scene = new Scene(root, 1280, 800);
         applyTheme(scene, currentUser != null && currentUser.isDarkTheme());
+        GlobalSearch.install(scene, this);
         stage.setScene(scene);
         stage.setTitle("Shop Management System");
         stage.show();
@@ -171,6 +172,11 @@ public class DashboardView {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         header.getChildren().add(spacer);
+
+        Button searchBtn = new Button("🔍  Search  (⌘K)");
+        searchBtn.getStyleClass().add("btn-secondary");
+        searchBtn.setOnAction(e -> GlobalSearch.open(this));
+        header.getChildren().add(searchBtn);
 
         boolean dark = currentUser != null && currentUser.isDarkTheme();
         Button themeBtn = new Button(dark ? "🌙  Dark" : "☀️  Light");
