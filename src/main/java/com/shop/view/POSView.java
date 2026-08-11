@@ -32,6 +32,7 @@ public class POSView {
 
     private final ObservableList<SaleItem> cartItems = FXCollections.observableArrayList();
     private final ObservableList<Product> availableProducts = FXCollections.observableArrayList();
+    private final FlowPane quickPad = new FlowPane(8, 8);
 
     private final Label subtotalLabel = new Label("₹0.00");
     private final Label discountLabel = new Label("-₹0.00");
@@ -73,6 +74,7 @@ public class POSView {
         mainLayout.getChildren().addAll(catalogPanel, cartPanel);
         loadProducts("");
         loadCustomers();
+        refreshQuickPad();
 
         return mainLayout;
     }
@@ -193,8 +195,35 @@ public class POSView {
         productTable.setItems(availableProducts);
         productTable.setPlaceholder(new Label("No products found matching your search."));
 
-        panel.getChildren().addAll(scanBox, searchBar, productTable);
+        VBox quickPadCard = new VBox(6);
+        quickPadCard.getStyleClass().add("card");
+        quickPadCard.setPadding(new Insets(10));
+        Label quickTitle = new Label("⚡ Frequently Bought");
+        quickTitle.getStyleClass().add("form-label");
+        quickPad.setVgap(8);
+        quickPad.setHgap(8);
+        quickPadCard.getChildren().addAll(quickTitle, quickPad);
+
+        panel.getChildren().addAll(scanBox, searchBar, quickPadCard, productTable);
         return panel;
+    }
+
+    private void refreshQuickPad() {
+        quickPad.getChildren().clear();
+        List<BestSeller> top = saleDAO.getTopSellers(30, 8);
+        for (BestSeller bs : top) {
+            Product p = productDAO.findById(bs.getProductId());
+            if (p == null) continue;
+            Button btn = new Button(p.getName() + "\n₹" + String.format("%.0f", p.getSellPrice()));
+            btn.setPrefWidth(118);
+            btn.setPrefHeight(52);
+            btn.setWrapText(true);
+            btn.getStyleClass().add(p.getQuantity() > 0 ? "btn-primary" : "btn-secondary");
+            btn.setDisable(p.getQuantity() <= 0);
+            btn.setTooltip(new Tooltip(p.getName() + " — " + (p.getQuantity() > 0 ? "In stock: " + p.getQuantity() : "Out of stock")));
+            btn.setOnAction(e -> addToCart(p));
+            quickPad.getChildren().add(btn);
+        }
     }
 
     private VBox buildCartPanel() {
