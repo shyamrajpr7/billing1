@@ -54,6 +54,9 @@ public class DashboardView {
         // Load default view
         loadView("Dashboard", () -> new HomeView(this).getView());
 
+        // Background desktop notifications for low stock & expiry
+        com.shop.util.StockNotifier.start();
+
         Scene scene = new Scene(root, 1280, 800);
         applyTheme(scene, currentUser != null && currentUser.isDarkTheme());
         GlobalSearch.install(scene, this);
@@ -153,6 +156,7 @@ public class DashboardView {
         logoutBtn.getStyleClass().addAll("btn-secondary", "btn-small");
         logoutBtn.setMaxWidth(Double.MAX_VALUE);
         logoutBtn.setOnAction(e -> {
+            com.shop.util.StockNotifier.stop();
             SessionManager.getInstance().logout();
             new LoginView(stage).show();
         });
