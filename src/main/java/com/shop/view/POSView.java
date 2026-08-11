@@ -38,6 +38,7 @@ public class POSView {
     private final Label loyaltyDiscountLabel = new Label("-₹0.00");
     private final Label taxLabel = new Label("₹0.00");
     private final Label grandTotalLabel = new Label("₹0.00");
+    private final Label giftCardLabel = new Label("-₹0.00");
 
     private Discount appliedDiscount = null;
     private Customer selectedCustomer = null;
@@ -46,6 +47,10 @@ public class POSView {
     private final ComboBox<String> paymentMethodCombo = new ComboBox<>();
     private final Label loyaltyBalanceLabel = new Label("🅿️  Loyalty Points: 0");
     private final TextField pointsField = new TextField();
+
+    private GiftCard appliedGiftCard = null;
+    private final TextField giftCardField = new TextField();
+    private final Label giftCardStatusLabel = new Label("Enter a gift card number to apply.");
 
     private final Label scanStatus = new Label("Ready to scan. Use a USB scanner or type a barcode and press Enter.");
     private Timer scanDebounce = new Timer(true);
@@ -130,6 +135,11 @@ public class POSView {
         scanBox.getChildren().addAll(scanRow, scanStatus);
 
         searchBar.getChildren().add(searchField);
+
+        Button sellGiftCardBtn = new Button("🎁  Sell Gift Card");
+        sellGiftCardBtn.getStyleClass().add("btn-secondary");
+        sellGiftCardBtn.setOnAction(e -> sellGiftCardDialog());
+        searchBar.getChildren().add(sellGiftCardBtn);
 
         // Product Catalog Table
         TableView<Product> productTable = new TableView<>();
@@ -337,6 +347,31 @@ public class POSView {
         });
         couponBox.getChildren().addAll(couponField, applyCouponBtn);
 
+        // Gift Card Payment
+        VBox giftCardBox = new VBox(6);
+        giftCardBox.getStyleClass().add("card");
+        giftCardBox.setPadding(new Insets(10));
+        Label gcTitle = new Label("🎁 Gift Card Payment");
+        gcTitle.getStyleClass().add("sub-label");
+
+        giftCardField.setPromptText("Gift card number (e.g. GC-12345678)");
+        HBox.setHgrow(giftCardField, Priority.ALWAYS);
+        Button applyGcBtn = new Button("Apply");
+        applyGcBtn.getStyleClass().addAll("btn-primary", "btn-small");
+        Button clearGcBtn = new Button("Remove");
+        clearGcBtn.getStyleClass().addAll("btn-secondary", "btn-small");
+
+        applyGcBtn.setOnAction(e -> applyGiftCard(giftCardField.getText().trim()));
+        clearGcBtn.setOnAction(e -> clearGiftCard());
+        giftCardField.setOnAction(e -> applyGiftCard(giftCardField.getText().trim()));
+
+        giftCardStatusLabel.getStyleClass().add("sub-label");
+        giftCardStatusLabel.setWrapText(true);
+
+        HBox gcRow = new HBox(8, giftCardField, applyGcBtn, clearGcBtn);
+        gcRow.setAlignment(Pos.CENTER_LEFT);
+        giftCardBox.getChildren().addAll(gcTitle, gcRow, giftCardStatusLabel);
+
         // Payment Method Combo
         paymentMethodCombo.setItems(FXCollections.observableArrayList("Cash", "Card", "UPI", "Net Banking"));
         paymentMethodCombo.getSelectionModel().selectFirst();
@@ -354,15 +389,17 @@ public class POSView {
         summaryGrid.add(discountLabel, 1, 1);
         summaryGrid.add(new Label("Loyalty:"), 0, 2);
         summaryGrid.add(loyaltyDiscountLabel, 1, 2);
-        summaryGrid.add(new Label("Tax (5%):"), 0, 3);
-        summaryGrid.add(taxLabel, 1, 3);
+        summaryGrid.add(new Label("Gift Card:"), 0, 3);
+        summaryGrid.add(giftCardLabel, 1, 3);
+        summaryGrid.add(new Label("Tax (5%):"), 0, 4);
+        summaryGrid.add(taxLabel, 1, 4);
 
         Label totalText = new Label("Grand Total:");
         totalText.getStyleClass().add("section-title");
         grandTotalLabel.getStyleClass().add("cart-total");
 
-        summaryGrid.add(totalText, 0, 4);
-        summaryGrid.add(grandTotalLabel, 1, 4);
+        summaryGrid.add(totalText, 0, 5);
+        summaryGrid.add(grandTotalLabel, 1, 5);
 
         // Checkout Button
         Button checkoutBtn = new Button("💳 COMPLETE CHECKOUT");
@@ -372,7 +409,7 @@ public class POSView {
         checkoutBtn.setOnAction(e -> processCheckout());
 
         panel.getChildren().addAll(
-                header, customerBox, loyaltyBox, cartTable, couponBox,
+                header, customerBox, loyaltyBox, cartTable, couponBox, giftCardBox,
                 new Label("Payment Method:"), paymentMethodCombo,
                 new Separator(), summaryGrid, checkoutBtn
         );
@@ -490,9 +527,12 @@ public class POSView {
         double tax = taxableAmount * TAX_RATE;
         double grandTotal = taxableAmount + tax;
 
+        double gcAmount = appliedGiftCard != null ? Math.min(appliedGiftCard.getBalance(), grandTotal) : 0;
+
         subtotalLabel.setText(String.format("₹%.2f", subtotal));
         discountLabel.setText(String.format("-₹%.2f", discountAmt));
         loyaltyDiscountLabel.setText(String.format("-₹%.2f", loyaltyAmt));
+        giftCardLabel.setText(String.format("-₹%.2f", gcAmount));
         taxLabel.setText(String.format("₹%.2f", tax));
         grandTotalLabel.setText(String.format("₹%.2f", grandTotal));
     }
@@ -555,6 +595,38 @@ public class POSView {
         appliedDiscount = null;
         pointsRedeemed = 0;
         pointsField.clear();
+        clearGiftCard();
+        recalculateTotals();
+    }
+
+    private void applyGiftCard(String number) {
+        if (number.isEmpty()) {
+            showAlert(Alert.AlertType.WARNING, "Gift Card", "Please enter a gift card number.");
+            return;
+        }
+        GiftCard gc = new com.shop.dao.GiftCardDAO().findByNumber(number);
+        if (gc == null) {
+            showAlert(Alert.AlertType.ERROR, "Gift Card", "No gift card found with number " + number + ".");
+            return;
+        }
+        if (!gc.isActive()) {
+            showAlert(Alert.AlertType.ERROR, "Gift Card", "This gift card is inactive.");
+            return;
+        }
+        if (gc.getBalance() <= 0) {
+            showAlert(Alert.AlertType.WARNING, "Gift Card", "This gift card has no remaining balance.");
+            return;
+        }
+        appliedGiftCard = gc;
+        giftCardField.setText(gc.getCardNumber());
+        giftCardStatusLabel.setText("✅ " + gc.getCardNumber() + " applied. Balance: " + gc.getFormattedBalance());
+        recalculateTotals();
+    }
+
+    private void clearGiftCard() {
+        appliedGiftCard = null;
+        giftCardField.clear();
+        giftCardStatusLabel.setText("Enter a gift card number to apply.");
         recalculateTotals();
     }
 
@@ -573,6 +645,18 @@ public class POSView {
         double tax = taxableAmount * TAX_RATE;
         double grandTotal = taxableAmount + tax;
 
+        double gcAmount = appliedGiftCard != null ? Math.min(appliedGiftCard.getBalance(), grandTotal) : 0;
+        if (appliedGiftCard != null && gcAmount > 0) {
+            GiftCard fresh = new com.shop.dao.GiftCardDAO().findByNumber(appliedGiftCard.getCardNumber());
+            if (fresh == null || !fresh.isActive() || fresh.getBalance() <= 0) {
+                showAlert(Alert.AlertType.WARNING, "Gift Card", "The gift card is no longer valid. Please re-apply or remove it.");
+                appliedGiftCard = null;
+                recalculateTotals();
+                return;
+            }
+            gcAmount = Math.min(fresh.getBalance(), grandTotal);
+        }
+
         Sale sale = new Sale();
         sale.setInvoiceNumber(saleDAO.generateNextInvoiceNumber());
         sale.setCustomerId(selectedCustomer != null ? selectedCustomer.getId() : 0);
@@ -582,7 +666,17 @@ public class POSView {
         sale.setPointsRedeemed(pointsRedeemed);
         sale.setTax(tax);
         sale.setTotal(grandTotal);
-        sale.setPaymentMethod(paymentMethodCombo.getValue());
+        sale.setGiftCardAmount(gcAmount);
+        if (appliedGiftCard != null && gcAmount > 0) {
+            sale.setGiftCardNumber(appliedGiftCard.getCardNumber());
+        }
+        if (gcAmount >= grandTotal) {
+            sale.setPaymentMethod(appliedGiftCard != null ? "Gift Card" : paymentMethodCombo.getValue());
+        } else if (gcAmount > 0) {
+            sale.setPaymentMethod(paymentMethodCombo.getValue() + " / Gift Card");
+        } else {
+            sale.setPaymentMethod(paymentMethodCombo.getValue());
+        }
 
         for (SaleItem item : cartItems) {
             sale.addItem(item);
@@ -646,6 +740,9 @@ public class POSView {
         if (sale.getPointsRedeemed() > 0) {
             totalLines.getChildren().add(new Label(String.format("Loyalty Points: -₹%.2f (%d pts)", sale.getLoyaltyDiscount(), sale.getPointsRedeemed())));
         }
+        if (sale.getGiftCardAmount() > 0) {
+            totalLines.getChildren().add(new Label(String.format("Gift Card (%s): -₹%.2f", sale.getGiftCardNumber(), sale.getGiftCardAmount())));
+        }
         totalLines.getChildren().addAll(
                 new Label(String.format("Tax (5%%): ₹%.2f", sale.getTax())),
                 new Label(String.format("TOTAL: ₹%.2f", sale.getTotal())) {{ setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #16c79a;"); }});
@@ -693,5 +790,75 @@ public class POSView {
         alert.setHeaderText(null);
         alert.setContentText(content);
         alert.showAndWait();
+    }
+
+    private void sellGiftCardDialog() {
+        Stage dialogStage = new Stage();
+        dialogStage.initModality(Modality.APPLICATION_MODAL);
+        dialogStage.setTitle("Sell Gift Card");
+
+        VBox box = new VBox(12);
+        box.setPadding(new Insets(20));
+        box.getStyleClass().add("card");
+
+        Label title = new Label("🎁 Sell a Gift Card");
+        title.getStyleClass().add("section-title");
+
+        TextField amountField = new TextField();
+        amountField.setPromptText("Amount (₹)");
+
+        ComboBox<Customer> custCombo = new ComboBox<>();
+        custCombo.setPromptText("Assign to customer (optional)");
+        custCombo.setMaxWidth(Double.MAX_VALUE);
+        custCombo.getItems().addAll(customerDAO.findAll());
+
+        Label status = new Label();
+        status.getStyleClass().add("sub-label");
+        status.setWrapText(true);
+
+        Button sellBtn = new Button("💵  Sell Gift Card");
+        sellBtn.getStyleClass().add("btn-primary");
+        sellBtn.setMaxWidth(Double.MAX_VALUE);
+        sellBtn.setOnAction(e -> {
+            double amount;
+            try {
+                amount = Double.parseDouble(amountField.getText().trim());
+            } catch (NumberFormatException ex) {
+                status.setText("⚠️ Please enter a valid amount.");
+                return;
+            }
+            if (amount <= 0) {
+                status.setText("⚠️ Amount must be greater than zero.");
+                return;
+            }
+            GiftCard gc = new GiftCard();
+            gc.setInitialAmount(Math.round(amount * 100.0) / 100.0);
+            gc.setBalance(gc.getInitialAmount());
+            Customer c = custCombo.getValue();
+            if (c != null) {
+                gc.setCustomerId(c.getId());
+                gc.setCustomerName(c.getName());
+            }
+            if (new com.shop.dao.GiftCardDAO().create(gc)) {
+                status.setText("✅ Gift card " + gc.getCardNumber() + " issued for ₹"
+                        + String.format("%.2f", gc.getInitialAmount()) + ".\nGive this number to the customer.");
+                amountField.clear();
+                custCombo.setValue(null);
+            } else {
+                status.setText("❌ Failed to issue gift card. Please try again.");
+            }
+        });
+
+        Button closeBtn = new Button("Close");
+        closeBtn.getStyleClass().add("btn-secondary");
+        closeBtn.setMaxWidth(Double.MAX_VALUE);
+        closeBtn.setOnAction(e -> dialogStage.close());
+
+        box.getChildren().addAll(title, amountField, custCombo, sellBtn, status, closeBtn);
+
+        Scene scene = new Scene(box, 360, 330);
+        scene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
+        dialogStage.setScene(scene);
+        dialogStage.showAndWait();
     }
 }

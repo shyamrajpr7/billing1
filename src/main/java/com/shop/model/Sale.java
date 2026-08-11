@@ -17,6 +17,8 @@ public class Sale {
     private double tax;
     private double total;
     private String paymentMethod;
+    private String giftCardNumber;
+    private double giftCardAmount;
     private LocalDateTime createdAt;
     private List<SaleItem> items;
 
@@ -63,6 +65,12 @@ public class Sale {
 
     public String getPaymentMethod() { return paymentMethod; }
     public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+
+    public String getGiftCardNumber() { return giftCardNumber; }
+    public void setGiftCardNumber(String giftCardNumber) { this.giftCardNumber = giftCardNumber; }
+
+    public double getGiftCardAmount() { return giftCardAmount; }
+    public void setGiftCardAmount(double giftCardAmount) { this.giftCardAmount = giftCardAmount; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

@@ -87,6 +87,7 @@ public class DashboardView {
 
             addNavButton(navBox, "📦  Inventory / Stock", () -> loadView("Inventory Management", () -> new InventoryView().getView()), false);
             addNavButton(navBox, "↩️  Returns & Refunds", () -> loadView("Returns & Refunds", () -> new ReturnsView().getView()), false);
+            addNavButton(navBox, "🎁  Gift Cards", () -> loadView("Gift Cards", () -> new GiftCardsView().getView()), false);
             addNavButton(navBox, "🔁  Reorder Suggestions", () -> loadView("Reorder Suggestions", () -> new ReorderSuggestionsView().getView()), false);
             addNavButton(navBox, "💰  Expenses & Profit", () -> loadView("Expense Management", () -> new ExpensesView().getView()), false);
             addNavButton(navBox, "👥  Customers", () -> loadView("Customer Management", () -> new CustomerView().getView()), false);

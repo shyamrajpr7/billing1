@@ -89,7 +89,9 @@ public class ReturnsView {
         TableColumn<SaleItem, Void> qtyCol = new TableColumn<>("Return Qty");
         qtyCol.setPrefWidth(110);
         qtyCol.setCellFactory(col -> new TableCell<>() {
-            private final Spinner<Integer> spinner = new Spinner<>(0, Integer.MAX_VALUE, 0);
+            private final IntegerSpinnerValueFactory valueFactory =
+                    new IntegerSpinnerValueFactory(0, Integer.MAX_VALUE, 0);
+            private final Spinner<Integer> spinner = new Spinner<>(valueFactory);
             {
                 spinner.setEditable(true);
                 spinner.setPrefWidth(80);
@@ -99,7 +101,7 @@ public class ReturnsView {
                         int val = n == null ? 0 : n;
                         int max = getAvailableQty(item);
                         if (val > max) {
-                            spinner.getValueFactory().setValue(max);
+                            valueFactory.setValue(max);
                             return;
                         }
                         returnQuantities.put(item.getProductId(), val);
@@ -116,8 +118,8 @@ public class ReturnsView {
                     setGraphic(null);
                 } else {
                     int max = getAvailableQty(item);
-                    spinner.getValueFactory().setMax(max);
-                    spinner.getValueFactory().setValue(Math.min(returnQuantities.getOrDefault(item.getProductId(), 0), max));
+                    valueFactory.setMax(max);
+                    valueFactory.setValue(Math.min(returnQuantities.getOrDefault(item.getProductId(), 0), max));
                     setGraphic(spinner);
                 }
             }

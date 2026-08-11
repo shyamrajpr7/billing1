@@ -50,6 +50,8 @@ public class SaleDAO {
                         .append("tax", sale.getTax())
                         .append("total", sale.getTotal())
                         .append("payment_method", sale.getPaymentMethod())
+                        .append("gift_card_number", sale.getGiftCardNumber())
+                        .append("gift_card_amount", sale.getGiftCardAmount())
                         .append("created_at", LocalDateTime.now().toString())
                         .append("items", items);
                 sales.insertOne(session, saleDoc);
@@ -61,6 +63,18 @@ public class SaleDAO {
                     var result = products.updateOne(session, stockFilter, Updates.inc("quantity", -item.getQuantity()));
                     if (result.getMatchedCount() == 0) {
                         throw new RuntimeException("Not enough stock for product: " + item.getProductName());
+                    }
+                }
+
+                if (sale.getGiftCardAmount() > 0) {
+                    Bson gcFilter = Filters.and(
+                            Filters.eq("card_number", sale.getGiftCardNumber()),
+                            Filters.eq("status", "ACTIVE"),
+                            Filters.gte("balance", sale.getGiftCardAmount()));
+                    var result = db.getCollection("gift_cards").updateOne(session, gcFilter,
+                            Updates.inc("balance", -sale.getGiftCardAmount()));
+                    if (result.getMatchedCount() == 0) {
+                        throw new RuntimeException("Gift card balance is insufficient: " + sale.getGiftCardNumber());
                     }
                 }
 
@@ -283,6 +297,8 @@ public class SaleDAO {
         s.setTax(doc.getDouble("tax"));
         s.setTotal(doc.getDouble("total"));
         s.setPaymentMethod(doc.getString("payment_method"));
+        s.setGiftCardNumber(doc.getString("gift_card_number"));
+        s.setGiftCardAmount(doc.getDouble("gift_card_amount") != null ? doc.getDouble("gift_card_amount") : 0);
         String createdAt = doc.getString("created_at");
         if (createdAt != null) {
             s.setCreatedAt(LocalDateTime.parse(createdAt));
