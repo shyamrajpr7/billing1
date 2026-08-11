@@ -19,6 +19,8 @@ public class Sale {
     private String paymentMethod;
     private String giftCardNumber;
     private double giftCardAmount;
+    private boolean creditSale;
+    private double amountPaid;
     private LocalDateTime createdAt;
     private List<SaleItem> items;
 
@@ -71,6 +73,14 @@ public class Sale {
 
     public double getGiftCardAmount() { return giftCardAmount; }
     public void setGiftCardAmount(double giftCardAmount) { this.giftCardAmount = giftCardAmount; }
+
+    public boolean isCreditSale() { return creditSale; }
+    public void setCreditSale(boolean creditSale) { this.creditSale = creditSale; }
+
+    public double getAmountPaid() { return amountPaid; }
+    public void setAmountPaid(double amountPaid) { this.amountPaid = amountPaid; }
+
+    public double getDueAmount() { return Math.max(0, total - amountPaid); }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

@@ -52,6 +52,8 @@ public class SaleDAO {
                         .append("payment_method", sale.getPaymentMethod())
                         .append("gift_card_number", sale.getGiftCardNumber())
                         .append("gift_card_amount", sale.getGiftCardAmount())
+                        .append("credit_sale", sale.isCreditSale())
+                        .append("amount_paid", sale.getAmountPaid())
                         .append("created_at", LocalDateTime.now().toString())
                         .append("items", items);
                 sales.insertOne(session, saleDoc);
@@ -243,6 +245,58 @@ public class SaleDAO {
         return String.format("INV-%06d", count + 1);
     }
 
+    public List<Sale> getOutstandingCreditSales() {
+        Bson filter = Filters.and(Filters.eq("credit_sale", true));
+        List<Document> docs = new ArrayList<>();
+        for (Document doc : sales.find(filter).sort(new Document("created_at", -1))) {
+            docs.add(doc);
+        }
+        Map<Integer, String> customerNames = loadCustomerNames(docs);
+        Map<Integer, String> userNames = loadUserNames(docs);
+        List<Sale> list = new ArrayList<>();
+        for (Document doc : docs) {
+            Sale sale = mapSaleRow(doc, customerNames, userNames);
+            if (sale.getDueAmount() > 0.001) {
+                list.add(sale);
+            }
+        }
+        return list;
+    }
+
+    public boolean collectPayment(int saleId, double amount) {
+        if (amount <= 0) return false;
+        try {
+            Bson filter = Filters.and(
+                    Filters.eq("_id", saleId),
+                    Filters.eq("credit_sale", true));
+            Document saleDoc = sales.find(filter).first();
+            if (saleDoc == null) return false;
+            double total = saleDoc.getDouble("total");
+            double paid = saleDoc.getDouble("amount_paid") != null ? saleDoc.getDouble("amount_paid") : 0;
+            if (paid + amount > total + 0.001) return false;
+            var result = sales.updateOne(filter, Updates.inc("amount_paid", amount));
+            if (result.getMatchedCount() > 0) {
+                Document invDoc = sales.find(Filters.eq("_id", saleId)).first();
+                String inv = invDoc != null ? invDoc.getString("invoice_number") : ("#" + saleId);
+                new ActivityLogDAO().log("PAYMENT", "Collected ₹" + String.format("%.2f", amount)
+                        + " towards credit sale " + inv);
+                return true;
+            }
+            return false;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public java.util.LinkedHashMap<String, Double> getCustomerDueTotals() {
+        java.util.LinkedHashMap<String, Double> dueByCustomer = new java.util.LinkedHashMap<>();
+        for (Sale sale : getOutstandingCreditSales()) {
+            dueByCustomer.merge(sale.getCustomerName(), sale.getDueAmount(), Double::sum);
+        }
+        return dueByCustomer;
+    }
+
     public java.util.List<com.shop.model.BestSeller> getTopSellers(int days, int limit) {
         Map<Integer, int[]> unitsByProduct = new HashMap<>();
         Map<Integer, Double> revenueByProduct = new HashMap<>();
@@ -356,6 +410,9 @@ public class SaleDAO {
         s.setPaymentMethod(doc.getString("payment_method"));
         s.setGiftCardNumber(doc.getString("gift_card_number"));
         s.setGiftCardAmount(doc.getDouble("gift_card_amount") != null ? doc.getDouble("gift_card_amount") : 0);
+        s.setCreditSale(doc.getBoolean("credit_sale") != null && doc.getBoolean("credit_sale"));
+        s.setAmountPaid(doc.getDouble("amount_paid") != null ? doc.getDouble("amount_paid")
+                : (s.isCreditSale() ? 0 : s.getTotal()));
         String createdAt = doc.getString("created_at");
         if (createdAt != null) {
             s.setCreatedAt(LocalDateTime.parse(createdAt));

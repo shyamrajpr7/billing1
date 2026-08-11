@@ -373,9 +373,17 @@ public class POSView {
         giftCardBox.getChildren().addAll(gcTitle, gcRow, giftCardStatusLabel);
 
         // Payment Method Combo
-        paymentMethodCombo.setItems(FXCollections.observableArrayList("Cash", "Card", "UPI", "Net Banking"));
+        paymentMethodCombo.setItems(FXCollections.observableArrayList("Cash", "Card", "UPI", "Net Banking", "Credit"));
         paymentMethodCombo.getSelectionModel().selectFirst();
         paymentMethodCombo.setMaxWidth(Double.MAX_VALUE);
+        paymentMethodCombo.valueProperty().addListener((obs, o, n) -> {
+            boolean credit = "Credit".equals(n);
+            if (credit && (selectedCustomer == null || selectedCustomer.getId() <= 0)) {
+                showAlert(Alert.AlertType.WARNING, "Credit Sale",
+                        "Credit sales require a registered customer. Please select a customer first.");
+                paymentMethodCombo.getSelectionModel().select(o);
+            }
+        });
 
         // Bill Summary Grid
         GridPane summaryGrid = new GridPane();
@@ -677,6 +685,10 @@ public class POSView {
         } else {
             sale.setPaymentMethod(paymentMethodCombo.getValue());
         }
+
+        boolean effectiveCredit = "Credit".equals(paymentMethodCombo.getValue()) && gcAmount < grandTotal;
+        sale.setCreditSale(effectiveCredit);
+        sale.setAmountPaid(effectiveCredit ? 0 : grandTotal);
 
         for (SaleItem item : cartItems) {
             sale.addItem(item);
