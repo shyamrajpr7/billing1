@@ -90,6 +90,7 @@ public class ProductDAO {
 
     public boolean update(Product product) {
         try {
+            Product old = findById(product.getId());
             Bson filter = Filters.eq("_id", product.getId());
             Bson update = Updates.combine(
                     Updates.set("name", product.getName()),
@@ -103,6 +104,18 @@ public class ProductDAO {
                     Updates.set("expiry_date", product.getExpiryDate() != null ? product.getExpiryDate().toString() : null));
             products.updateOne(filter, update);
             new ActivityLogDAO().log("PRODUCT_UPDATE", "Updated product: " + product.getName());
+
+            PriceHistoryDAO priceHistory = new PriceHistoryDAO();
+            if (old != null) {
+                if (Math.abs(old.getBuyPrice() - product.getBuyPrice()) > 0.001) {
+                    priceHistory.log(product.getId(), product.getName(), "Cost Price",
+                            old.getBuyPrice(), product.getBuyPrice());
+                }
+                if (Math.abs(old.getSellPrice() - product.getSellPrice()) > 0.001) {
+                    priceHistory.log(product.getId(), product.getName(), "Selling Price",
+                            old.getSellPrice(), product.getSellPrice());
+                }
+            }
             return true;
         } catch (Exception e) {
             e.printStackTrace();

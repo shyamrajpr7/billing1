@@ -105,6 +105,7 @@ public class DashboardView {
             addNavButton(navBox, "📊  Charts & Trends", () -> loadView("Sales Analytics", () -> new AnalyticsView().getView()), false);
             addNavButton(navBox, "👔  Employee Directory", () -> loadView("Employee Management", () -> new EmployeeView().getView()), false);
             addNavButton(navBox, "📜  Activity Log", () -> loadView("Activity Log", () -> new ActivityLogView().getView()), false);
+            addNavButton(navBox, "🏷️  Price Change Audit", () -> loadView("Price Change Audit", () -> new PriceHistoryView().getView()), false);
             addNavButton(navBox, "🛡️  Backup & Restore", () -> loadView("Backup & Restore", () -> new BackupView().getView()), false);
         }
 

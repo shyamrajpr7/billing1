@@ -89,8 +89,8 @@ public class ReturnsView {
         TableColumn<SaleItem, Void> qtyCol = new TableColumn<>("Return Qty");
         qtyCol.setPrefWidth(110);
         qtyCol.setCellFactory(col -> new TableCell<>() {
-            private final IntegerSpinnerValueFactory valueFactory =
-                    new IntegerSpinnerValueFactory(0, Integer.MAX_VALUE, 0);
+            private final SpinnerValueFactory.IntegerSpinnerValueFactory valueFactory =
+                    new SpinnerValueFactory.IntegerSpinnerValueFactory(0, Integer.MAX_VALUE, 0);
             private final Spinner<Integer> spinner = new Spinner<>(valueFactory);
             {
                 spinner.setEditable(true);
