@@ -103,6 +103,7 @@ public class DashboardView {
             navBox.getChildren().add(adminLabel);
 
             addNavButton(navBox, "📈  Sales & Analytics", () -> loadView("Sales & Reports", () -> new ReportsView().getView()), false);
+            addNavButton(navBox, "🏆  Top Sellers", () -> loadView("Top Sellers", () -> new TopSellersView().getView()), false);
             addNavButton(navBox, "📊  Charts & Trends", () -> loadView("Sales Analytics", () -> new AnalyticsView().getView()), false);
             addNavButton(navBox, "🔮  Sales Forecast", () -> loadView("Sales Forecast", () -> new SalesForecastView().getView()), false);
             addNavButton(navBox, "👔  Employee Directory", () -> loadView("Employee Management", () -> new EmployeeView().getView()), false);

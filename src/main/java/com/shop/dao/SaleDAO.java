@@ -243,6 +243,63 @@ public class SaleDAO {
         return String.format("INV-%06d", count + 1);
     }
 
+    public java.util.List<com.shop.model.BestSeller> getTopSellers(int days, int limit) {
+        Map<Integer, int[]> unitsByProduct = new HashMap<>();
+        Map<Integer, Double> revenueByProduct = new HashMap<>();
+        String start = LocalDate.now().minusDays(Math.max(days - 1, 0)).toString();
+        for (Document doc : sales.find(Filters.gte("created_at", start))) {
+            Object raw = doc.get("items");
+            if (!(raw instanceof List<?> list)) continue;
+            for (Object o : list) {
+                if (!(o instanceof Document itemDoc)) continue;
+                Integer pid = itemDoc.getInteger("product_id");
+                Integer qty = itemDoc.getInteger("quantity");
+                Double unitPrice = itemDoc.getDouble("unit_price");
+                if (pid != null) {
+                    unitsByProduct.computeIfAbsent(pid, k -> new int[1])[0] += qty != null ? qty : 0;
+                    revenueByProduct.merge(pid, (qty != null ? qty : 0) * (unitPrice != null ? unitPrice : 0), Double::sum);
+                }
+            }
+        }
+        Map<Integer, String> names = new HashMap<>();
+        Map<Integer, String> categories = new HashMap<>();
+        for (Document p : db.getCollection("products").find(Filters.in("_id", unitsByProduct.keySet()))) {
+            names.put(p.getInteger("_id"), p.getString("name"));
+            categories.put(p.getInteger("_id"), p.getString("category"));
+        }
+        java.util.List<com.shop.model.BestSeller> list = new java.util.ArrayList<>();
+        for (Map.Entry<Integer, Double> e : revenueByProduct.entrySet()) {
+            com.shop.model.BestSeller bs = new com.shop.model.BestSeller();
+            bs.setProductId(e.getKey());
+            bs.setName(names.getOrDefault(e.getKey(), "Product #" + e.getKey()));
+            bs.setCategory(categories.getOrDefault(e.getKey(), ""));
+            bs.setUnits(unitsByProduct.get(e.getKey())[0]);
+            bs.setRevenue(Math.round(e.getValue() * 100.0) / 100.0);
+            list.add(bs);
+        }
+        list.sort((a, b) -> Double.compare(b.getRevenue(), a.getRevenue()));
+        if (list.size() > limit) list = new java.util.ArrayList<>(list.subList(0, limit));
+        return list;
+    }
+
+    public java.util.List<com.shop.model.CategorySales> getTopCategories(int days) {
+        java.util.List<com.shop.model.BestSeller> sellers = getTopSellers(days, 1000);
+        Map<String, com.shop.model.CategorySales> byCat = new java.util.LinkedHashMap<>();
+        for (com.shop.model.BestSeller bs : sellers) {
+            String cat = bs.getCategory() == null || bs.getCategory().isEmpty() ? "Uncategorized" : bs.getCategory();
+            com.shop.model.CategorySales cs = byCat.computeIfAbsent(cat, k -> {
+                com.shop.model.CategorySales c = new com.shop.model.CategorySales();
+                c.setCategory(k);
+                return c;
+            });
+            cs.setUnits(cs.getUnits() + bs.getUnits());
+            cs.setRevenue(cs.getRevenue() + bs.getRevenue());
+        }
+        java.util.List<com.shop.model.CategorySales> list = new java.util.ArrayList<>(byCat.values());
+        list.sort((a, b) -> Double.compare(b.getRevenue(), a.getRevenue()));
+        return list;
+    }
+
     private double sumRevenue(Bson filter) {
         double total = 0;
         for (Document doc : sales.find(filter)) {
