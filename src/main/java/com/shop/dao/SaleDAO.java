@@ -201,6 +201,10 @@ public class SaleDAO {
         return sumRevenue(Filters.regex("created_at", "^" + month));
     }
 
+    public double getTotalRevenueForMonth(String yearMonth) {
+        return sumRevenue(Filters.regex("created_at", "^" + yearMonth));
+    }
+
     public java.util.LinkedHashMap<String, Double> getDailyRevenue(int days) {
         java.util.LinkedHashMap<String, Double> daily = new java.util.LinkedHashMap<>();
         LocalDate today = LocalDate.now();
