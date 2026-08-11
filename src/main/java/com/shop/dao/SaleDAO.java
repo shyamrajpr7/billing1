@@ -124,6 +124,16 @@ public class SaleDAO {
         return sale;
     }
 
+    public Sale findByInvoiceNumber(String invoiceNumber) {
+        Document doc = sales.find(Filters.eq("invoice_number", invoiceNumber)).first();
+        if (doc == null) return null;
+        Map<Integer, String> customerNames = loadCustomerNames(List.of(doc));
+        Map<Integer, String> userNames = loadUserNames(List.of(doc));
+        Sale sale = mapSaleRow(doc, customerNames, userNames);
+        sale.setItems(findItemsBySaleId(sale.getId()));
+        return sale;
+    }
+
     public List<SaleItem> findItemsBySaleId(int saleId) {
         List<SaleItem> items = new ArrayList<>();
         Document doc = sales.find(Filters.eq("_id", saleId)).first();

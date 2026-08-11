@@ -78,7 +78,7 @@ public class DashboardView {
 
         // Menu items based on role
         addNavButton(navBox, "📊  Dashboard", () -> loadView("Dashboard", () -> new HomeView(this).getView()), true);
-        addNavButton(navBox, "💳  Point of Sale (POS)", () -> loadView("Point of Sale", () -> new POSView().getView()), false);
+            addNavButton(navBox, "💳  Point of Sale (POS)", () -> loadView("Point of Sale", () -> new POSView().getView()), false);
 
         if (currentUser != null && (currentUser.getRole() == Role.ADMIN || currentUser.getRole() == Role.MANAGER)) {
             Label mgmtLabel = new Label("MANAGEMENT");
@@ -86,6 +86,7 @@ public class DashboardView {
             navBox.getChildren().add(mgmtLabel);
 
             addNavButton(navBox, "📦  Inventory / Stock", () -> loadView("Inventory Management", () -> new InventoryView().getView()), false);
+            addNavButton(navBox, "↩️  Returns & Refunds", () -> loadView("Returns & Refunds", () -> new ReturnsView().getView()), false);
             addNavButton(navBox, "🔁  Reorder Suggestions", () -> loadView("Reorder Suggestions", () -> new ReorderSuggestionsView().getView()), false);
             addNavButton(navBox, "💰  Expenses & Profit", () -> loadView("Expense Management", () -> new ExpensesView().getView()), false);
             addNavButton(navBox, "👥  Customers", () -> loadView("Customer Management", () -> new CustomerView().getView()), false);
