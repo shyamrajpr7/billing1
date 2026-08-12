@@ -3,6 +3,7 @@ package com.shop.view;
 import com.shop.dao.*;
 import com.shop.model.*;
 import com.shop.util.SessionManager;
+import com.shop.util.WhatsAppSender;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -48,6 +49,9 @@ public class POSView {
     private final ComboBox<String> paymentMethodCombo = new ComboBox<>();
     private final Label loyaltyBalanceLabel = new Label("🅿️  Loyalty Points: 0");
     private final TextField pointsField = new TextField();
+
+    private final TextField phoneField = new TextField();
+    private final CheckBox autoSendEBill = new CheckBox("Send e-Bill on WhatsApp after checkout");
 
     private GiftCard appliedGiftCard = null;
     private final TextField giftCardField = new TextField();
@@ -252,11 +256,21 @@ public class POSView {
             selectedCustomer = customerCombo.getValue();
             pointsRedeemed = 0;
             pointsField.clear();
+            phoneField.setText(selectedCustomer != null && selectedCustomer.getPhone() != null ? selectedCustomer.getPhone() : "");
             updateLoyaltyBalance();
             recalculateTotals();
         });
 
         customerBox.getChildren().addAll(custLabel, customerCombo);
+
+        // WhatsApp e-Bill Phone
+        VBox phoneBox = new VBox(6);
+        Label phoneLabel = new Label("📲 Phone for WhatsApp e-Bill");
+        phoneLabel.getStyleClass().add("form-label");
+        phoneField.setPromptText("e.g. 9876543210");
+        phoneField.setMaxWidth(Double.MAX_VALUE);
+        autoSendEBill.setSelected(true);
+        phoneBox.getChildren().addAll(phoneLabel, phoneField, autoSendEBill);
 
         // Loyalty points redemption
         VBox loyaltyBox = new VBox(6);
@@ -446,7 +460,7 @@ public class POSView {
         checkoutBtn.setOnAction(e -> processCheckout());
 
         panel.getChildren().addAll(
-                header, customerBox, loyaltyBox, cartTable, couponBox, giftCardBox,
+                header, customerBox, phoneBox, loyaltyBox, cartTable, couponBox, giftCardBox,
                 new Label("Payment Method:"), paymentMethodCombo,
                 new Separator(), summaryGrid, checkoutBtn
         );
@@ -725,7 +739,12 @@ public class POSView {
 
         boolean success = saleDAO.createSale(sale);
         if (success) {
-            showReceiptWindow(sale);
+            String customerName = selectedCustomer != null ? selectedCustomer.getName() : "Walk-in";
+            String phone = phoneField.getText() == null ? "" : phoneField.getText().trim();
+            showReceiptWindow(sale, customerName, phone);
+            if (autoSendEBill.isSelected()) {
+                sendEBill(sale, customerName, phone, true);
+            }
             clearCart();
             loadProducts(""); // Refresh inventory stock levels
             loadCustomers(); // Refresh loyalty point balances
@@ -734,7 +753,32 @@ public class POSView {
         }
     }
 
-    private void showReceiptWindow(Sale sale) {
+    private void sendEBill(Sale sale, String customerName, String phone, boolean silent) {
+        String p = phone == null ? "" : phone.trim();
+        if (p.isEmpty()) {
+            if (!silent) {
+                showAlert(Alert.AlertType.WARNING, "WhatsApp e-Bill", "Enter a phone number first to send the e-Bill on WhatsApp.");
+            }
+            return;
+        }
+        if (WhatsAppSender.normalizePhone(p) == null) {
+            if (!silent) {
+                showAlert(Alert.AlertType.WARNING, "WhatsApp e-Bill", "Please enter a valid phone number.");
+            }
+            return;
+        }
+        if (WhatsAppSender.sendEBill(p, sale, customerName)) {
+            if (!silent) {
+                showAlert(Alert.AlertType.INFORMATION, "WhatsApp e-Bill",
+                        "WhatsApp is opening with the e-Bill for " + p + ".\nJust press Send to deliver it to the customer.");
+            }
+        } else if (!silent) {
+            showAlert(Alert.AlertType.ERROR, "WhatsApp e-Bill",
+                    "Could not open WhatsApp. Make sure a default browser is configured.");
+        }
+    }
+
+    private void showReceiptWindow(Sale sale, String customerName, String phone) {
         Stage receiptStage = new Stage();
         receiptStage.initModality(Modality.APPLICATION_MODAL);
         receiptStage.setTitle("Invoice Receipt - " + sale.getInvoiceNumber());
@@ -754,7 +798,7 @@ public class POSView {
         invoiceMeta.getChildren().addAll(
                 new Label("Invoice No: " + sale.getInvoiceNumber()),
                 new Label("Date: " + sale.getFormattedDate()),
-                new Label("Customer: " + (selectedCustomer != null ? selectedCustomer.getName() : "Walk-in")),
+                new Label("Customer: " + (customerName == null ? "Walk-in" : customerName)),
                 new Label("Payment: " + sale.getPaymentMethod())
         );
 
@@ -813,9 +857,14 @@ public class POSView {
         closeBtn.getStyleClass().add("btn-secondary");
         closeBtn.setOnAction(e -> receiptStage.close());
 
+        Button waBtn = new Button("📲 WhatsApp e-Bill");
+        waBtn.getStyleClass().addAll("btn-primary");
+        waBtn.setTooltip(new Tooltip("Send this e-Bill to " + (phone == null || phone.isEmpty() ? "a phone number" : phone) + " on WhatsApp"));
+        waBtn.setOnAction(e -> sendEBill(sale, customerName, phone, false));
+
         HBox buttonRow = new HBox(10);
         buttonRow.setAlignment(Pos.CENTER);
-        buttonRow.getChildren().addAll(printBtn, closeBtn);
+        buttonRow.getChildren().addAll(waBtn, printBtn, closeBtn);
 
         root.getChildren().addAll(shopTitle, headerSub, invoiceMeta, sep1, itemsBox, sep2, totalsBox, thankYou, buttonRow);
 
