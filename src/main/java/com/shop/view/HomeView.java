@@ -40,8 +40,8 @@ public class HomeView {
         subtitleLabel.getStyleClass().add("sub-label");
         VBox topBox = new VBox(4, welcomeLabel, subtitleLabel);
 
-        // Stat Cards Grid (wraps as needed)
-        FlowPane statsGrid = new FlowPane(16, 16);
+        // Stat Cards Row (equal width, fills the window)
+        HBox statsGrid = new HBox(16);
 
         double todayRevenue = saleDAO.getTotalRevenueToday();
         double todayExpense = expenseDAO.getTotalToday();
@@ -57,6 +57,8 @@ public class HomeView {
 
         for (VBox card : List.of(revenueCard, profitCard, salesCard, productsCard, lowStockCard, expiryCard)) {
             card.setPrefWidth(175);
+            card.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(card, Priority.ALWAYS);
             statsGrid.getChildren().add(card);
         }
 
@@ -181,11 +183,15 @@ public class HomeView {
         expiryTable.getItems().addAll(expiringProducts);
         expiryTable.setPlaceholder(new Label("No products expiring. Nothing to worry about! 🎉"));
 
-        HBox alertsTables = new HBox(14);
-        HBox.setHgrow(alertTable, Priority.ALWAYS);
-        HBox.setHgrow(expiryTable, Priority.ALWAYS);
         VBox lowStockPane = new VBox(8, new Label("📦 Low Stock"), alertTable);
         VBox expiryPane = new VBox(8, new Label("📆 Expiry"), expiryTable);
+        lowStockPane.setMaxWidth(Double.MAX_VALUE);
+        expiryPane.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(lowStockPane, Priority.ALWAYS);
+        HBox.setHgrow(expiryPane, Priority.ALWAYS);
+        VBox.setVgrow(alertTable, Priority.ALWAYS);
+        VBox.setVgrow(expiryTable, Priority.ALWAYS);
+        HBox alertsTables = new HBox(14);
         alertsTables.getChildren().addAll(lowStockPane, expiryPane);
 
         alertsCard.getChildren().addAll(alertsTitle, alertsTables);
