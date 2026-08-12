@@ -51,7 +51,6 @@ public class POSView {
     private final TextField pointsField = new TextField();
 
     private final TextField phoneField = new TextField();
-    private final CheckBox autoSendEBill = new CheckBox("Send e-Bill on WhatsApp after checkout");
 
     private GiftCard appliedGiftCard = null;
     private final TextField giftCardField = new TextField();
@@ -271,8 +270,7 @@ public class POSView {
         phoneLabel.getStyleClass().add("form-label");
         phoneField.setPromptText("e.g. 9876543210");
         phoneField.setMaxWidth(Double.MAX_VALUE);
-        autoSendEBill.setSelected(true);
-        phoneBox.getChildren().addAll(phoneLabel, phoneField, autoSendEBill);
+        phoneBox.getChildren().addAll(phoneLabel, phoneField);
 
         // Loyalty points redemption
         VBox loyaltyBox = new VBox(6);
@@ -751,9 +749,7 @@ public class POSView {
             String customerName = selectedCustomer != null ? selectedCustomer.getName() : "Walk-in";
             String phone = phoneField.getText() == null ? "" : phoneField.getText().trim();
             showReceiptWindow(sale, customerName, phone);
-            if (autoSendEBill.isSelected()) {
-                sendEBill(sale, customerName, phone, true);
-            }
+            sendEBill(sale, customerName, phone, true);
             clearCart();
             loadProducts(""); // Refresh inventory stock levels
             loadCustomers(); // Refresh loyalty point balances
