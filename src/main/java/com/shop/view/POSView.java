@@ -231,8 +231,10 @@ public class POSView {
     }
 
     private VBox buildCartPanel() {
-        VBox panel = new VBox(14);
+        VBox panel = new VBox();
         panel.getStyleClass().add("card");
+
+        VBox content = new VBox(14);
 
         // Cart Header
         HBox header = new HBox();
@@ -459,11 +461,18 @@ public class POSView {
         checkoutBtn.setPrefHeight(48);
         checkoutBtn.setOnAction(e -> processCheckout());
 
-        panel.getChildren().addAll(
+        content.getChildren().addAll(
                 header, customerBox, phoneBox, loyaltyBox, cartTable, couponBox, giftCardBox,
                 new Label("Payment Method:"), paymentMethodCombo,
                 new Separator(), summaryGrid, checkoutBtn
         );
+
+        ScrollPane scroll = new ScrollPane(content);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+        VBox.setVgrow(scroll, Priority.ALWAYS);
+        panel.getChildren().add(scroll);
 
         return panel;
     }
