@@ -10,6 +10,7 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
@@ -123,7 +124,13 @@ public class DashboardView {
         // User profile panel at bottom
         VBox userPanel = buildUserPanel();
 
-        sidebar.getChildren().addAll(headerBox, navBox, userPanel);
+        ScrollPane navScroll = new ScrollPane(navBox);
+        navScroll.setFitToWidth(true);
+        navScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        navScroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+        VBox.setVgrow(navScroll, Priority.ALWAYS);
+
+        sidebar.getChildren().addAll(headerBox, navScroll, userPanel);
         return sidebar;
     }
 
