@@ -134,6 +134,7 @@ public class DashboardView {
             addNavButton(navBox, "🛡️  Backup & Restore", () -> loadView("Backup & Restore", () -> new BackupView().getView()), false);
             addNavButton(navBox, "⚙️  Store Settings", () -> loadView("Store Settings", () -> new SettingsView().getView()), false);
             addNavButton(navBox, "⏰  Reminders & To-Dos", () -> loadView("Reminders & To-Dos", () -> new RemindersView().getView()), false);
+            addNavButton(navBox, "📅  Store Calendar", () -> loadView("Store Calendar", () -> new CalendarView().getView()), false);
         }
 
         // User profile panel at bottom
