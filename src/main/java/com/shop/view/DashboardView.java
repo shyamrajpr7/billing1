@@ -99,6 +99,7 @@ public class DashboardView {
             addNavButton(navBox, "💰  Expenses & Profit", () -> loadView("Expense Management", () -> new ExpensesView().getView()), false);
             addNavButton(navBox, "👥  Customers", () -> loadView("Customer Management", () -> new CustomerView().getView()), false);
             addNavButton(navBox, "🎫  Service Tickets", () -> loadView("Service Tickets", () -> new ServiceTicketsView().getView()), false);
+            addNavButton(navBox, "💬  Customer Feedback", () -> loadView("Customer Feedback", () -> new FeedbackView().getView()), false);
             addNavButton(navBox, "💳  Credit & Dues", () -> loadView("Credit & Dues", () -> new CreditView().getView()), false);
             addNavButton(navBox, "⭐  Memberships & Loyalty", () -> loadView("Membership & Loyalty", () -> new MembershipsView().getView()), false);
             addNavButton(navBox, "🏷️  Discounts & Coupons", () -> loadView("Discount Management", () -> new DiscountView().getView()), false);
