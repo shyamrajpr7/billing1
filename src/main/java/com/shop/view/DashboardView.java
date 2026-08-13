@@ -130,6 +130,7 @@ public class DashboardView {
             addNavButton(navBox, "📢  Announcements", () -> loadView("Announcements", () -> new AnnouncementsView().getView()), false);
             addNavButton(navBox, "🏷️  Price Change Audit", () -> loadView("Price Change Audit", () -> new PriceHistoryView().getView()), false);
             addNavButton(navBox, "🛡️  Backup & Restore", () -> loadView("Backup & Restore", () -> new BackupView().getView()), false);
+            addNavButton(navBox, "⚙️  Store Settings", () -> loadView("Store Settings", () -> new SettingsView().getView()), false);
             addNavButton(navBox, "⏰  Reminders & To-Dos", () -> loadView("Reminders & To-Dos", () -> new RemindersView().getView()), false);
         }
 
