@@ -123,6 +123,7 @@ public class DashboardView {
             addNavButton(navBox, "👔  Employee Directory", () -> loadView("Employee Management", () -> new EmployeeView().getView()), false);
             addNavButton(navBox, "⏱️  Staff Attendance", () -> loadView("Staff Attendance", () -> new AttendanceView().getView()), false);
             addNavButton(navBox, "📜  Activity Log", () -> loadView("Activity Log", () -> new ActivityLogView().getView()), false);
+            addNavButton(navBox, "📢  Announcements", () -> loadView("Announcements", () -> new AnnouncementsView().getView()), false);
             addNavButton(navBox, "🏷️  Price Change Audit", () -> loadView("Price Change Audit", () -> new PriceHistoryView().getView()), false);
             addNavButton(navBox, "🛡️  Backup & Restore", () -> loadView("Backup & Restore", () -> new BackupView().getView()), false);
         }
