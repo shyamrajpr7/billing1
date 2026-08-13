@@ -106,6 +106,7 @@ public class DashboardView {
             addNavButton(navBox, "📝  Pre-Orders", () -> loadView("Pre-Orders", () -> new PreOrdersView().getView()), false);
             addNavButton(navBox, "📄  Quotations", () -> loadView("Quotations", () -> new QuotationsView().getView()), false);
             addNavButton(navBox, "🛡️  Warranties", () -> loadView("Warranty Management", () -> new WarrantiesView().getView()), false);
+            addNavButton(navBox, "🛒  Layaway Plans", () -> loadView("Layaway Plans", () -> new LayawayView().getView()), false);
         }
 
         if (currentUser != null && currentUser.getRole() == Role.ADMIN) {
