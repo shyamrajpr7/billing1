@@ -91,6 +91,7 @@ public class DashboardView {
             navBox.getChildren().add(mgmtLabel);
 
             addNavButton(navBox, "📦  Inventory / Stock", () -> loadView("Inventory Management", () -> new InventoryView().getView()), false);
+            addNavButton(navBox, "🏷️  Brands", () -> loadView("Brand Management", () -> new BrandsView().getView()), false);
             addNavButton(navBox, "↩️  Returns & Refunds", () -> loadView("Returns & Refunds", () -> new ReturnsView().getView()), false);
             addNavButton(navBox, "🎁  Gift Cards", () -> loadView("Gift Cards", () -> new GiftCardsView().getView()), false);
             addNavButton(navBox, "🔁  Reorder Suggestions", () -> loadView("Reorder Suggestions", () -> new ReorderSuggestionsView().getView()), false);
