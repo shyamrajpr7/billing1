@@ -61,6 +61,19 @@ public class POSView {
 
     private static final double TAX_RATE = 0.05; // 5% GST/Tax
 
+    private String storeName() {
+        String name = storeSetting(SettingDAO.KEY_STORE_NAME);
+        return name.isEmpty() ? "My Shop" : name;
+    }
+
+    private String storeSetting(String key) {
+        try {
+            return new SettingDAO().get(key, "");
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
     public Node getView() {
         HBox mainLayout = new HBox(20);
         mainLayout.setPadding(new Insets(5));
@@ -806,9 +819,17 @@ public class POSView {
         root.getStyleClass().add("card");
         root.setAlignment(Pos.TOP_CENTER);
 
-        Label shopTitle = new Label("🛍️ SUPER STORE RETAIL");
+        Label shopTitle = new Label("🛍️ " + storeName());
         shopTitle.getStyleClass().add("section-title");
-        Label headerSub = new Label("123 Main Street, Commerce City\nPhone: +91 98765 43210");
+
+        List<String> metaLines = new java.util.ArrayList<>();
+        String storeAddress = storeSetting(SettingDAO.KEY_ADDRESS);
+        String storePhone = storeSetting(SettingDAO.KEY_PHONE);
+        String storeEmail = storeSetting(SettingDAO.KEY_EMAIL);
+        if (!storeAddress.isEmpty()) metaLines.add(storeAddress);
+        if (!storePhone.isEmpty()) metaLines.add("Phone: " + storePhone);
+        if (!storeEmail.isEmpty()) metaLines.add("Email: " + storeEmail);
+        Label headerSub = new Label(metaLines.isEmpty() ? "" : String.join("\n", metaLines));
         headerSub.getStyleClass().add("sub-label");
         headerSub.setStyle("-fx-text-alignment: center;");
 
@@ -859,7 +880,8 @@ public class POSView {
             totalsBox.getChildren().add(pointsLine);
         }
 
-        Label thankYou = new Label("Thank you for shopping with us!");
+        String footerText = storeSetting(SettingDAO.KEY_RECEIPT_FOOTER);
+        Label thankYou = new Label(footerText.isEmpty() ? "Thank you for shopping with us!" : footerText);
         thankYou.getStyleClass().add("sub-label");
 
         Button printBtn = new Button("🖨️ Print");
