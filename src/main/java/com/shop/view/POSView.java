@@ -244,7 +244,20 @@ public class POSView {
         HBox.setHgrow(spacer, Priority.ALWAYS);
         Button clearBtn = new Button("Clear");
         clearBtn.getStyleClass().addAll("btn-secondary", "btn-small");
-        clearBtn.setOnAction(e -> clearCart());
+        clearBtn.setOnAction(e -> {
+            if (cartItems.isEmpty()) {
+                showAlert(Alert.AlertType.INFORMATION, "Cart Empty", "Your cart is already empty.");
+                return;
+            }
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                    "Are you sure you want to clear the cart and remove all " + cartItems.size() + " item(s)?",
+                    ButtonType.YES, ButtonType.NO);
+            confirm.setTitle("Clear Cart");
+            confirm.setHeaderText(null);
+            confirm.showAndWait().ifPresent(r -> {
+                if (r == ButtonType.YES) clearCart();
+            });
+        });
         header.getChildren().addAll(title, spacer, clearBtn);
 
         // Customer Selection
