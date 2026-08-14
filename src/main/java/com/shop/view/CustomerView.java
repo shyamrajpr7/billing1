@@ -46,6 +46,20 @@ public class CustomerView {
 
         controlBar.getChildren().addAll(searchField, addCustomerBtn);
 
+        List<Customer> allCustomers = customerDAO.findAll();
+        int totalCustomers = allCustomers.size();
+        int totalPoints = allCustomers.stream().mapToInt(Customer::getLoyaltyPoints).sum();
+        double avgPoints = totalCustomers == 0 ? 0 : (double) totalPoints / totalCustomers;
+
+        HBox statsBar = new HBox(14);
+        VBox customersCard = createSummaryCard(String.valueOf(totalCustomers), "Total Customers");
+        VBox pointsCard = createSummaryCard(String.valueOf(totalPoints), "Loyalty Points Issued");
+        VBox avgCard = createSummaryCard(String.format("%.1f", avgPoints), "Avg Points / Customer");
+        HBox.setHgrow(customersCard, Priority.ALWAYS);
+        HBox.setHgrow(pointsCard, Priority.ALWAYS);
+        HBox.setHgrow(avgCard, Priority.ALWAYS);
+        statsBar.getChildren().addAll(customersCard, pointsCard, avgCard);
+
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         VBox.setVgrow(table, Priority.ALWAYS);
 
@@ -113,7 +127,7 @@ public class CustomerView {
         table.setItems(customerList);
         table.setPlaceholder(new Label("No customers registered yet."));
 
-        root.getChildren().addAll(controlBar, table);
+        root.getChildren().addAll(statsBar, controlBar, table);
         loadCustomers("");
         return root;
     }
