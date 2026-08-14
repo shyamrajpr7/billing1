@@ -56,7 +56,29 @@ public class LoginView {
         passwordField.setPromptText("Enter password");
         passwordField.setText("admin123");
 
-        VBox passBox = new VBox(6, passLabel, passwordField);
+        TextField passwordText = new TextField("admin123");
+        passwordText.setPromptText("Enter password");
+        passwordText.setManaged(false);
+        passwordText.setVisible(false);
+
+        CheckBox showPass = new CheckBox("Show password");
+        showPass.setStyle("-fx-font-size: 12px;");
+        showPass.setOnAction(e -> {
+            boolean show = showPass.isSelected();
+            String pw = show ? passwordField.getText() : passwordText.getText();
+            passwordField.setVisible(!show);
+            passwordField.setManaged(!show);
+            passwordText.setVisible(show);
+            passwordText.setManaged(show);
+            (show ? passwordText : passwordField).setText(pw);
+            (show ? passwordText : passwordField).requestFocus();
+        });
+
+        HBox passOptions = new HBox(8);
+        passOptions.setAlignment(Pos.CENTER_RIGHT);
+        passOptions.getChildren().add(showPass);
+
+        VBox passBox = new VBox(6, passLabel, passwordField, passwordText, passOptions);
 
         Label errorLabel = new Label();
         errorLabel.getStyleClass().add("error-label");
@@ -69,7 +91,7 @@ public class LoginView {
 
         Runnable handleLogin = () -> {
             String username = usernameField.getText().trim();
-            String password = passwordField.getText();
+            String password = passwordField.isVisible() ? passwordField.getText() : passwordText.getText();
 
             if (username.isEmpty() || password.isEmpty()) {
                 errorLabel.setText("Please enter both username and password");
@@ -91,6 +113,7 @@ public class LoginView {
 
         loginBtn.setOnAction(e -> handleLogin.run());
         passwordField.setOnAction(e -> handleLogin.run());
+        passwordText.setOnAction(e -> handleLogin.run());
         usernameField.setOnAction(e -> handleLogin.run());
 
         Label hintLabel = new Label("Default Admin: admin / admin123");
