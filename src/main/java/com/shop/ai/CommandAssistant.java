@@ -1,11 +1,14 @@
 package com.shop.ai;
 
 import com.shop.dao.CustomerDAO;
+import com.shop.dao.DiscountDAO;
 import com.shop.dao.ExpenseDAO;
 import com.shop.dao.ProductDAO;
 import com.shop.dao.SaleDAO;
+import com.shop.dao.SalesTargetDAO;
 import com.shop.dao.UserDAO;
 import com.shop.model.Customer;
+import com.shop.model.Discount;
 import com.shop.model.Expense;
 import com.shop.model.Product;
 import com.shop.model.Sale;
@@ -28,6 +31,8 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import java.time.LocalDate;
+
 /**
  * Offline command assistant. Turns natural-language (typed or spoken) text into
  * actions: navigation, product/customer/supplier management, sales and reports.
@@ -43,6 +48,8 @@ public class CommandAssistant {
     private final ExpenseDAO expenseDAO = new ExpenseDAO();
     private final SaleDAO saleDAO = new SaleDAO();
     private final UserDAO userDAO = new UserDAO();
+    private final SalesTargetDAO targetDAO = new SalesTargetDAO();
+    private final DiscountDAO discountDAO = new DiscountDAO();
 
     private DashboardView dashboard;
     private final Map<Integer, Integer> cart = new LinkedHashMap<>(); // productId -> qty
@@ -100,6 +107,9 @@ public class CommandAssistant {
             if (reply != null) return reply;
 
             reply = handleReports(lower);
+            if (reply != null) return reply;
+
+            reply = handleSettings(lower, text);
             if (reply != null) return reply;
 
             reply = handleProducts(lower, text);
@@ -191,6 +201,8 @@ public class CommandAssistant {
         if (reply != null) return reply;
         reply = handleReports(lower);
         if (reply != null) return reply;
+        reply = handleSettings(lower, text);
+        if (reply != null) return reply;
         reply = handleProducts(lower, text);
         if (reply != null) return reply;
         reply = handleCustomers(lower, text);
@@ -213,6 +225,11 @@ public class CommandAssistant {
                 + "\"search customer <name>\", \"how many customers\"\n"
                 + "- Expenses: \"add expense <description> <amount>\", \"today's expenses\", "
                 + "\"this month's expenses\", \"today's profit\", \"this month's profit\"\n"
+                + "- Targets: \"set monthly target to <amount>\" (optional \"for january\" or \"next month\"), "
+                + "\"what is the monthly target\"\n"
+                + "- Prices & stock: \"set price of <name> to <amount>\", "
+                + "\"set minimum stock of <name> to <n>\"\n"
+                + "- Discounts: \"add discount <code> <value> percent\" or \"... flat\"\n"
                 + "- Sales: \"add <name> to cart\", \"add <qty> <name> to cart\", \"remove <name> from cart\", "
                 + "\"show cart\", \"clear cart\", \"pay by cash/card/upi/net banking\", \"checkout\"\n"
                 + "- Reports: \"today's revenue\", \"revenue this month\", \"sales today\", \"total sales\", "
@@ -229,6 +246,11 @@ public class CommandAssistant {
                 + "- \"today's expenses / how much did we spend today\" → <<today's expenses>>\n"
                 + "- \"today's profit / are we making money today\" → <<today's profit>>\n"
                 + "- \"record an expense\" → <<add expense <description> <amount>>>\n"
+                + "- \"set the monthly target to <amount> / set sales target for <month> to <amount>\" → <<set monthly target to 50000>>\n"
+                + "- \"what's the monthly target / show our target\" → <<what is the monthly target>>\n"
+                + "- \"change the price of <name> / set new price of <name> to <amount>\" → <<set price of <name> to 45>>\n"
+                + "- \"set minimum stock / low stock alert for <name> to <n>\" → <<set minimum stock of <name> to 10>>\n"
+                + "- \"add a discount coupon <code> <value> percent\" → <<add discount SAVE10 10 percent>>\n"
                 + "Rules:\n"
                 + "1. If the user asks about the shop's own data (sales, revenue, transactions, products, stock, "
                 + "customers) in ANY wording, reply with ONLY the matching command wrapped in double angle brackets, "
@@ -682,6 +704,173 @@ public class CommandAssistant {
     }
 
     // ----------------------------------------------------------------
+    // Settings: targets, prices, stock levels, discounts
+    // ----------------------------------------------------------------
+    private String handleSettings(String lower, String text) {
+        // --- Monthly sales target (set) ---
+        boolean setTargetIntent = (lower.contains("set") || lower.contains("update") || lower.contains("change"))
+                && lower.contains("target");
+        if (!setTargetIntent && (lower.contains("target to") || lower.contains("target at")
+                || lower.contains("target of") || lower.contains("target is") || lower.contains("target ="))) {
+            setTargetIntent = true;
+        }
+        if (setTargetIntent) {
+            return setTarget(text);
+        }
+
+        // --- Monthly sales target (get) ---
+        if (matchesAny(lower, "what is the monthly target", "what's the monthly target",
+                "what is our target", "what's our target", "what is my target", "what's my target",
+                "show monthly target", "show the monthly target", "show my target", "current target",
+                "monthly target", "sales target", "target progress", "how much is the target",
+                "check the target", "what is the target", "target status")) {
+            return getTarget();
+        }
+
+        // --- Product price ---
+        Matcher price = Pattern.compile(
+                "(?:set|update|change|adjust)\\s+price\\s+(?:of|for)\\s+(.+?)\\s+(?:to|at|is|=|:)\\s+(\\d[\\d,]*(?:\\.\\d+)?)",
+                Pattern.CASE_INSENSITIVE).matcher(text);
+        if ((lower.contains("set price") || lower.contains("update price") || lower.contains("change price")
+                || lower.contains("adjust price") || lower.contains("new price")) && price.find()) {
+            String name = price.group(1).trim().replaceAll("(?i)^the\\s+", "");
+            double amount = parseAmount(price.group(2));
+            if (amount <= 0) return "The price must be greater than zero.";
+            Product p = findUniqueProduct(name);
+            if (p == null) return "I couldn't find a single product matching \"" + name + "\".";
+            p.setSellPrice(amount);
+            boolean ok = productDAO.update(p);
+            if (!ok) return "Sorry, I could not update the price.";
+            refresh();
+            return "Done! Selling price of \"" + p.getName() + "\" is now ₹" + formatRupees(amount) + ".";
+        }
+
+        // --- Minimum stock level ---
+        if ((lower.contains("set") || lower.contains("update") || lower.contains("change"))
+                && (lower.contains("minimum stock") || lower.contains("min stock")
+                || lower.contains("low stock alert") || lower.contains("stock level"))) {
+            Matcher minStock = Pattern.compile(
+                    "(?:set|update|change)\\s+(?:minimum\\s+|min\\s+|low\\s+stock\\s+alert\\s+|stock\\s+level\\s+)?"
+                            + "(?:stock|level|alert|limit)?\\s*(?:of|for)?\\s*(.+?)\\s+(?:to|at|is|=|:)\\s+(\\d+)",
+                    Pattern.CASE_INSENSITIVE).matcher(text);
+            if (minStock.find()) {
+                String name = minStock.group(1).trim().replaceAll("(?i)^the\\s+", "");
+                int level = Integer.parseInt(minStock.group(2));
+                if (level < 0) return "Minimum stock level cannot be negative.";
+                Product p = findUniqueProduct(name);
+                if (p == null) return "I couldn't find a single product matching \"" + name + "\".";
+                p.setMinStockLevel(level);
+                boolean ok = productDAO.update(p);
+                if (!ok) return "Sorry, I could not update the stock level.";
+                refresh();
+                return "Done! \"" + p.getName() + "\" will be flagged as low when stock drops to "
+                        + level + " or below.";
+            }
+        }
+
+        // --- Discounts / coupons ---
+        if (lower.startsWith("add discount") || lower.startsWith("create discount")
+                || lower.startsWith("set discount") || lower.startsWith("add coupon")
+                || lower.startsWith("create coupon")) {
+            return addDiscount(text);
+        }
+        return null;
+    }
+
+    private String getTarget() {
+        String month = currentMonth();
+        double target = targetDAO.getTargetForMonth(month);
+        double actual = saleDAO.getTotalRevenueThisMonth();
+        if (target <= 0) {
+            return "No sales target is set for " + monthLabel(month) + " yet. Say \"set monthly target to 50000\" to create one.";
+        }
+        double pct = actual / target * 100;
+        return "Your sales target for " + monthLabel(month) + " is ₹" + formatRupees(target)
+                + " and you've earned ₹" + formatRupees(actual) + " so far ("
+                + String.format("%.0f", pct) + "% of target).";
+    }
+
+    private String setTarget(String text) {
+        Matcher m = Pattern.compile("(\\d[\\d,]*(?:\\.\\d+)?)").matcher(text);
+        if (!m.find()) {
+            return "Please tell me the target amount too, like \"set monthly target to 50000\".";
+        }
+        double amount = parseAmount(m.group(1));
+        if (amount <= 0) return "The target must be greater than zero.";
+
+        String month = currentMonth();
+        if (text.toLowerCase().contains("next month")) {
+            month = java.time.YearMonth.now().plusMonths(1).toString();
+        } else {
+            Matcher ym = Pattern.compile("(20\\d{2}-\\d{2})").matcher(text);
+            if (ym.find()) {
+                month = ym.group(1);
+            } else {
+                Matcher mn = Pattern.compile("(january|february|march|april|may|june|july|august|september|october|november|december)",
+                        Pattern.CASE_INSENSITIVE).matcher(text);
+                if (mn.find()) {
+                    int mon = monthNumber(mn.group(1));
+                    int year = LocalDate.now().getYear();
+                    Matcher yr = Pattern.compile("\\b(20\\d{2})\\b").matcher(text);
+                    if (yr.find()) year = Integer.parseInt(yr.group(1));
+                    month = year + "-" + String.format("%02d", mon);
+                }
+            }
+        }
+        if (!month.matches("\\d{4}-\\d{2}")) {
+            return "I couldn't figure out the month. Try \"set monthly target to 50000\" (current month) or \"set target for january to 50000\".";
+        }
+        boolean ok = targetDAO.upsert(month, amount);
+        if (!ok) return "Sorry, I could not save the target.";
+        refresh();
+        return "Done! Monthly sales target set to ₹" + formatRupees(amount) + " for " + monthLabel(month)
+                + ". Say \"monthly target\" anytime to check progress.";
+    }
+
+    private String addDiscount(String text) {
+        Matcher m = Pattern.compile(
+                "(?:add|create|set)\\s+(?:a\\s+)?(?:discount|coupon)\\s+(?:code\\s+)?([a-zA-Z0-9_-]+)\\s+(\\d+(?:\\.\\d+)?)\\s*(percent\\s+off|flat\\s+off|percent|%|off|flat|rupees?)?",
+                Pattern.CASE_INSENSITIVE).matcher(text);
+        if (!m.find()) {
+            return "Please say the code and value, like \"add discount SAVE10 10 percent\".";
+        }
+        String code = m.group(1).toUpperCase();
+        double value = Double.parseDouble(m.group(2));
+        String typeWord = m.group(3);
+        String type = "PERCENTAGE";
+        if (typeWord != null && (typeWord.toLowerCase().startsWith("flat") || typeWord.toLowerCase().startsWith("rupee"))) {
+            type = "FLAT";
+        }
+        if (value <= 0) return "The discount value must be greater than zero.";
+        if (discountDAO.findByCode(code) != null) {
+            return "A coupon with code \"" + code + "\" already exists.";
+        }
+        Discount d = new Discount();
+        d.setCode(code);
+        d.setDescription("Created via AI assistant");
+        d.setType(type);
+        d.setValue(value);
+        d.setMinPurchase(0);
+        d.setStartDate(LocalDate.now());
+        d.setEndDate(LocalDate.now().plusMonths(1));
+        d.setActive(true);
+        boolean ok = discountDAO.insert(d);
+        if (!ok) return "Sorry, I could not create the discount.";
+        refresh();
+        return "Created discount coupon \"" + code + "\" with " + d.getValueDisplay() + " off"
+                + " (valid for 1 month). Customers can use it at checkout.";
+    }
+
+    private int monthNumber(String name) {
+        String[] months = {"january", "february", "march", "april", "may", "june", "july",
+                "august", "september", "october", "november", "december"};
+        for (int i = 0; i < months.length; i++) {
+            if (months[i].equals(name.toLowerCase())) return i + 1;
+        }
+        return LocalDate.now().getMonthValue();
+    }
+
+    // ----------------------------------------------------------------
     // Helpers
     // ----------------------------------------------------------------
     private void refresh() {
@@ -719,6 +908,27 @@ public class CommandAssistant {
         return fallback;
     }
 
+    private double parseAmount(String s) {
+        return Double.parseDouble(s.replace(",", ""));
+    }
+
+    private String formatRupees(double v) {
+        return String.format("%,.0f", v);
+    }
+
+    private String currentMonth() {
+        return LocalDate.now().toString().substring(0, 7);
+    }
+
+    private String monthLabel(String month) {
+        try {
+            return java.time.YearMonth.parse(month)
+                    .format(java.time.format.DateTimeFormatter.ofPattern("MMM yyyy"));
+        } catch (Exception e) {
+            return month;
+        }
+    }
+
     private String intro() {
         return "I'm your shop assistant. I work completely offline. I can open any screen, "
                 + "add and manage products, add customers, process sales from the cart, "
@@ -730,6 +940,9 @@ public class CommandAssistant {
                 + "  • Open screens: \"open inventory\", \"open customers\", \"open pos\", \"open reports\"\n"
                 + "  • Products: \"add product milk at 40\", \"delete product <name>\", \"check stock of <name>\", \"low stock\", \"expiring products\"\n"
                 + "  • Customers: \"add customer Rahul\", \"search customer <name>\", \"how many customers\"\n"
+                + "  • Targets: \"set monthly target to 50000\", \"what is the monthly target\"\n"
+                + "  • Prices & stock: \"set price of milk to 45\", \"set minimum stock of milk to 10\"\n"
+                + "  • Discounts: \"add discount SAVE10 10 percent\"\n"
                 + "  • Sales: \"add milk to cart\", \"add 2 coke to cart\", \"show cart\", \"checkout\"\n"
                 + "  • Reports: \"today's revenue\", \"revenue this month\", \"sales today\"";
     }
