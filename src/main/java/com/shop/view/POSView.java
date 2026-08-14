@@ -139,9 +139,19 @@ public class POSView {
 
         Button scanBtn = new Button("Scan");
         scanBtn.getStyleClass().add("btn-primary");
-        scanBtn.setOnAction(e -> processScan(scanField.getText()));
+        scanBtn.setOnAction(e -> {
+            if (processScan(scanField.getText())) {
+                scanField.clear();
+                scanField.requestFocus();
+            }
+        });
 
-        scanField.setOnAction(e -> processScan(scanField.getText()));
+        scanField.setOnAction(e -> {
+            if (processScan(scanField.getText())) {
+                scanField.clear();
+                scanField.requestFocus();
+            }
+        });
         scanField.requestFocus();
 
         scanStatus.getStyleClass().add("sub-label");
@@ -521,9 +531,9 @@ public class POSView {
         updateLoyaltyBalance();
     }
 
-    private void processScan(String input) {
+    private boolean processScan(String input) {
         String text = input == null ? "" : input.trim();
-        if (text.isEmpty()) return;
+        if (text.isEmpty()) return false;
 
         int qty = 1;
         String code = text;
@@ -534,23 +544,23 @@ public class POSView {
             if (qty < 1) qty = 1;
         }
 
-        if (code.isEmpty()) return;
+        if (code.isEmpty()) return false;
 
         Product product = productDAO.findByBarcode(code);
         if (product == null) {
             beep();
             setScanStatus("✗ Barcode not found: " + code);
-            return;
+            return false;
         }
         if (product.getQuantity() <= 0) {
             beep();
             setScanStatus("✗ " + product.getName() + " is out of stock.");
-            return;
+            return false;
         }
         if (qty > product.getQuantity()) {
             beep();
             setScanStatus("✗ Only " + product.getQuantity() + " of " + product.getName() + " in stock.");
-            return;
+            return false;
         }
 
         for (int i = 0; i < qty; i++) {
@@ -558,6 +568,7 @@ public class POSView {
         }
         beep();
         setScanStatus("✓ " + product.getName() + " added" + (qty > 1 ? " x" + qty : "") + " to cart.");
+        return true;
     }
 
     private void setScanStatus(String text) {
