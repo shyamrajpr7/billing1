@@ -5,6 +5,9 @@ import com.shop.ai.CommandAssistant;
 import com.shop.model.Role;
 import com.shop.model.User;
 import com.shop.util.SessionManager;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -13,7 +16,10 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -202,6 +208,16 @@ public class DashboardView {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         header.getChildren().add(spacer);
+
+        DateTimeFormatter clockFormat = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy  •  hh:mm a");
+        Label clockLabel = new Label(LocalDateTime.now().format(clockFormat));
+        clockLabel.getStyleClass().add("sub-label");
+        HBox.setMargin(clockLabel, new javafx.geometry.Insets(0, 14, 0, 0));
+        Timeline clock = new Timeline(new KeyFrame(Duration.seconds(1), e ->
+                clockLabel.setText(LocalDateTime.now().format(clockFormat))));
+        clock.setCycleCount(Animation.INDEFINITE);
+        clock.play();
+        header.getChildren().add(clockLabel);
 
         Button searchBtn = new Button("🔍  Search  (⌘K)");
         searchBtn.getStyleClass().add("btn-secondary");
