@@ -39,16 +39,19 @@ public class ReportsView {
 
         double totalRevenue = saleDAO.getTotalRevenueThisMonth();
         double todayRevenue = saleDAO.getTotalRevenueToday();
-        int totalSales = saleDAO.findAll().size();
+        long totalSales = saleDAO.count();
+        long todaySales = saleDAO.getSalesCountToday();
 
         VBox card1 = createMetricCard("📅", String.format("₹%.2f", todayRevenue), "Today's Revenue");
         VBox card2 = createMetricCard("🗓️", String.format("₹%.2f", totalRevenue), "This Month's Revenue");
         VBox card3 = createMetricCard("🧾", String.valueOf(totalSales), "Total Transactions");
+        VBox card4 = createMetricCard("⚡", String.valueOf(todaySales), "Today's Transactions");
 
-        metricsGrid.getChildren().addAll(card1, card2, card3);
+        metricsGrid.getChildren().addAll(card1, card2, card3, card4);
         HBox.setHgrow(card1, Priority.ALWAYS);
         HBox.setHgrow(card2, Priority.ALWAYS);
         HBox.setHgrow(card3, Priority.ALWAYS);
+        HBox.setHgrow(card4, Priority.ALWAYS);
 
         // Sales History Section
         VBox tableCard = new VBox(12);

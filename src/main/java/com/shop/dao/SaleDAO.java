@@ -196,6 +196,10 @@ public class SaleDAO {
         return (int) sales.countDocuments(Filters.regex("created_at", "^" + today));
     }
 
+    public long count() {
+        return sales.countDocuments();
+    }
+
     public double getTotalRevenueThisMonth() {
         String month = LocalDate.now().toString().substring(0, 7);
         return sumRevenue(Filters.regex("created_at", "^" + month));
