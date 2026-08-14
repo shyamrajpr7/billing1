@@ -78,7 +78,25 @@ public class LoginView {
         passOptions.setAlignment(Pos.CENTER_RIGHT);
         passOptions.getChildren().add(showPass);
 
-        VBox passBox = new VBox(6, passLabel, passwordField, passwordText, passOptions);
+        Label capsWarning = new Label("⚠️ Caps Lock is ON — passwords are case-sensitive");
+        capsWarning.getStyleClass().add("text-warning");
+        capsWarning.setStyle("-fx-font-size: 11px;");
+        capsWarning.setVisible(false);
+        capsWarning.setManaged(false);
+
+        javafx.event.EventHandler<javafx.scene.input.KeyEvent> capsHandler = e -> {
+            String typed = e.getCharacter();
+            boolean on = !typed.isEmpty()
+                    && Character.isLetter(typed.charAt(0))
+                    && Character.isUpperCase(typed.charAt(0))
+                    && !e.isShiftDown();
+            capsWarning.setVisible(on);
+            capsWarning.setManaged(on);
+        };
+        passwordField.setOnKeyTyped(capsHandler);
+        passwordText.setOnKeyTyped(capsHandler);
+
+        VBox passBox = new VBox(6, passLabel, passwordField, passwordText, capsWarning, passOptions);
 
         Label errorLabel = new Label();
         errorLabel.getStyleClass().add("error-label");
@@ -127,5 +145,6 @@ public class LoginView {
         stage.setScene(scene);
         stage.setTitle("Shop Management System - Login");
         stage.show();
+        javafx.application.Platform.runLater(usernameField::requestFocus);
     }
 }
