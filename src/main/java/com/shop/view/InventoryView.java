@@ -28,6 +28,7 @@ public class InventoryView {
     private final SupplierDAO supplierDAO = new SupplierDAO();
     private final ObservableList<Product> productList = FXCollections.observableArrayList();
     private final TableView<Product> table = new TableView<>();
+    private final CheckBox lowStockCheck = new CheckBox("Low stock only");
 
     public Node getView() {
         VBox root = new VBox(16);
@@ -44,6 +45,10 @@ public class InventoryView {
 
         searchField.textProperty().addListener((obs, oldVal, newVal) -> loadProducts(newVal.trim()));
 
+        CheckBox lowStockCheck = new CheckBox("Low stock only");
+        lowStockCheck.setStyle("-fx-font-size: 12px;");
+        lowStockCheck.setOnAction(e -> loadProducts(searchField.getText().trim()));
+
         Button addProductBtn = new Button("➕  Add New Product");
         addProductBtn.getStyleClass().add("btn-primary");
         addProductBtn.setOnAction(e -> showProductDialog(null));
@@ -52,7 +57,7 @@ public class InventoryView {
         importBtn.getStyleClass().add("btn-secondary");
         importBtn.setOnAction(e -> importCsv());
 
-        controlBar.getChildren().addAll(searchField, importBtn, addProductBtn);
+        controlBar.getChildren().addAll(searchField, lowStockCheck, importBtn, addProductBtn);
 
         // Product Table
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
@@ -214,10 +219,15 @@ public class InventoryView {
 
     private void loadProducts(String query) {
         productList.clear();
+        List<Product> source;
         if (query.isEmpty()) {
-            productList.addAll(productDAO.findAll());
+            source = productDAO.findAll();
         } else {
-            productList.addAll(productDAO.search(query));
+            source = productDAO.search(query);
+        }
+        for (Product p : source) {
+            if (lowStockCheck.isSelected() && p.getQuantity() > p.getMinStockLevel()) continue;
+            productList.add(p);
         }
     }
 
