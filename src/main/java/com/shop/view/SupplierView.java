@@ -18,6 +18,7 @@ public class SupplierView {
     private final SupplierDAO supplierDAO = new SupplierDAO();
     private final ObservableList<Supplier> supplierList = FXCollections.observableArrayList();
     private final TableView<Supplier> table = new TableView<>();
+    private final Label countLabel = new Label();
 
     public Node getView() {
         VBox root = new VBox(16);
@@ -33,11 +34,13 @@ public class SupplierView {
 
         searchField.textProperty().addListener((obs, oldVal, newVal) -> loadSuppliers(newVal.trim()));
 
+        countLabel.getStyleClass().add("sub-label");
+
         Button addSupplierBtn = new Button("➕  Add Supplier");
         addSupplierBtn.getStyleClass().add("btn-primary");
         addSupplierBtn.setOnAction(e -> showSupplierDialog(null));
 
-        controlBar.getChildren().addAll(searchField, addSupplierBtn);
+        controlBar.getChildren().addAll(searchField, addSupplierBtn, countLabel);
 
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         VBox.setVgrow(table, Priority.ALWAYS);
@@ -111,6 +114,7 @@ public class SupplierView {
         } else {
             supplierList.addAll(supplierDAO.search(query));
         }
+        countLabel.setText(supplierList.size() + " supplier(s)");
     }
 
     private void showSupplierDialog(Supplier supplierToEdit) {
