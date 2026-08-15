@@ -78,6 +78,8 @@ public class ExpensesView {
         Button addBtn = new Button("➕  Add Expense");
         addBtn.getStyleClass().add("btn-primary");
         addBtn.setOnAction(e -> addExpense(descField, categoryCombo, amountField, datePicker));
+        descField.setOnAction(e -> addBtn.fire());
+        amountField.setOnAction(e -> addBtn.fire());
 
         addRow.getChildren().addAll(descField, categoryCombo, amountField, datePicker, addBtn);
 
