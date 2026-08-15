@@ -402,6 +402,7 @@ public class POSView {
         HBox.setHgrow(couponField, Priority.ALWAYS);
         Button applyCouponBtn = new Button("Apply");
         applyCouponBtn.getStyleClass().add("btn-secondary");
+        couponField.setOnAction(e -> applyCouponBtn.fire());
 
         applyCouponBtn.setOnAction(e -> {
             String code = couponField.getText().trim();
