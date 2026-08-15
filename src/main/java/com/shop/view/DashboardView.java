@@ -224,6 +224,12 @@ public class DashboardView {
         searchBtn.setOnAction(e -> GlobalSearch.open(this));
         header.getChildren().add(searchBtn);
 
+        Button refreshBtn = new Button("🔄  Refresh");
+        refreshBtn.getStyleClass().add("btn-secondary");
+        refreshBtn.setTooltip(new javafx.scene.control.Tooltip("Reload the current view"));
+        refreshBtn.setOnAction(e -> reloadCurrentView());
+        header.getChildren().add(refreshBtn);
+
         boolean dark = currentUser != null && currentUser.isDarkTheme();
         Button themeBtn = new Button(dark ? "🌙  Dark" : "☀️  Light");
         themeBtn.getStyleClass().add("btn-secondary");
