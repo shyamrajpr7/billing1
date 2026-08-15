@@ -114,6 +114,10 @@ public class AnnouncementsView {
     private void refresh() {
         announcementList.clear();
         announcementList.addAll(announcementDAO.findAll());
+        announcementList.sort((a, b) -> {
+            if (a.isPinned() != b.isPinned()) return a.isPinned() ? -1 : 1;
+            return b.getCreatedAt().compareTo(a.getCreatedAt());
+        });
         noticeBoard.getChildren().clear();
         for (Announcement a : announcementList) {
             noticeBoard.getChildren().add(buildCard(a));
