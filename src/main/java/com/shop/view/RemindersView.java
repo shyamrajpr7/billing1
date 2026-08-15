@@ -62,6 +62,7 @@ public class RemindersView {
         Button addBtn = new Button("➕  Add Reminder");
         addBtn.getStyleClass().add("btn-primary");
         addBtn.setOnAction(e -> addReminder());
+        titleField.setOnAction(e -> addBtn.fire());
 
         HBox formRow = new HBox(10, titleField, detailsField, duePicker, timeField, priorityCombo, addBtn);
         formRow.setAlignment(Pos.CENTER_LEFT);
