@@ -209,6 +209,7 @@ public class CustomerView {
 
     private void showPurchaseHistory(Customer customer) {
         List<Sale> sales = saleDAO.findByCustomerId(customer.getId());
+        sales.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
 
         Stage dialog = new Stage();
         dialog.initModality(Modality.APPLICATION_MODAL);
