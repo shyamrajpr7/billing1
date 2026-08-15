@@ -55,6 +55,7 @@ public class POSView {
     private GiftCard appliedGiftCard = null;
     private final TextField giftCardField = new TextField();
     private final Label giftCardStatusLabel = new Label("Enter a gift card number to apply.");
+    private Button checkoutBtn;
 
     private final Label scanStatus = new Label("Ready to scan. Use a USB scanner or type a barcode and press Enter.");
     private Timer scanDebounce = new Timer(true);
@@ -490,10 +491,11 @@ public class POSView {
         summaryGrid.add(grandTotalLabel, 1, 5);
 
         // Checkout Button
-        Button checkoutBtn = new Button("💳 COMPLETE CHECKOUT");
+        checkoutBtn = new Button("💳 COMPLETE CHECKOUT");
         checkoutBtn.getStyleClass().add("btn-primary");
         checkoutBtn.setMaxWidth(Double.MAX_VALUE);
         checkoutBtn.setPrefHeight(48);
+        checkoutBtn.setDisable(true);
         checkoutBtn.setOnAction(e -> processCheckout());
 
         content.getChildren().addAll(
@@ -607,6 +609,7 @@ public class POSView {
 
     private void recalculateTotals() {
         double subtotal = calculateSubtotal();
+        if (checkoutBtn != null) checkoutBtn.setDisable(cartItems.isEmpty());
         double discountAmt = 0;
         if (appliedDiscount != null) {
             discountAmt = appliedDiscount.apply(subtotal);
