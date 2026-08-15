@@ -51,11 +51,14 @@ public class HomeView {
         VBox profitCard = createStatCard("📈", String.format("₹%.2f", todayProfit), "Today's Profit", todayProfit >= 0 ? "text-accent" : "text-danger");
         VBox salesCard = createStatCard("🛒", String.valueOf(saleDAO.getSalesCountToday()), "Transactions Today", "text-white");
         VBox productsCard = createStatCard("📦", String.valueOf(productDAO.count()), "Total Products", "text-white");
+        double stockValue = productDAO.findAll().stream()
+                .mapToDouble(p -> p.getBuyPrice() * p.getQuantity()).sum();
+        VBox stockValueCard = createStatCard("💎", String.format("₹%.2f", stockValue), "Stock Value", "text-white");
         VBox lowStockCard = createStatCard("⚠️", String.valueOf(productDAO.countLowStock()), "Low Stock Alerts", "text-warning");
         int expiringCount = productDAO.findExpiring(30).size() + productDAO.findExpired().size();
         VBox expiryCard = createStatCard("⏳", String.valueOf(expiringCount), "Expiring / Expired", "text-danger");
 
-        for (VBox card : List.of(revenueCard, profitCard, salesCard, productsCard, lowStockCard, expiryCard)) {
+        for (VBox card : List.of(revenueCard, profitCard, salesCard, productsCard, stockValueCard, lowStockCard, expiryCard)) {
             card.setPrefWidth(175);
             card.setMaxWidth(Double.MAX_VALUE);
             HBox.setHgrow(card, Priority.ALWAYS);
