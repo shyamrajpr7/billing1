@@ -81,6 +81,10 @@ public class InventoryView {
         TableColumn<Product, String> sellPriceCol = new TableColumn<>("Sell Price");
         sellPriceCol.setCellValueFactory(p -> new SimpleStringProperty(String.format("₹%.2f", p.getValue().getSellPrice())));
 
+        TableColumn<Product, String> stockValueCol = new TableColumn<>("Stock Value");
+        stockValueCol.setCellValueFactory(p -> new SimpleStringProperty(String.format("₹%.2f",
+                p.getValue().getBuyPrice() * p.getValue().getQuantity())));
+
         TableColumn<Product, Integer> qtyCol = new TableColumn<>("Quantity");
         qtyCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
 
@@ -168,7 +172,7 @@ public class InventoryView {
             }
         });
 
-        table.getColumns().addAll(idCol, nameCol, barcodeCol, categoryCol, buyPriceCol, sellPriceCol, qtyCol, statusCol, supplierCol, expiryCol, actionCol);
+        table.getColumns().addAll(idCol, nameCol, barcodeCol, categoryCol, buyPriceCol, sellPriceCol, stockValueCol, qtyCol, statusCol, supplierCol, expiryCol, actionCol);
         table.setItems(productList);
         table.setPlaceholder(new Label("No inventory records found. Click 'Add New Product' to get started."));
 
