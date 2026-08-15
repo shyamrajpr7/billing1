@@ -25,6 +25,7 @@ public class CustomerView {
     private final SaleDAO saleDAO = new SaleDAO();
     private final ObservableList<Customer> customerList = FXCollections.observableArrayList();
     private final TableView<Customer> table = new TableView<>();
+    private final Label countLabel = new Label();
 
     public Node getView() {
         VBox root = new VBox(16);
@@ -40,11 +41,13 @@ public class CustomerView {
 
         searchField.textProperty().addListener((obs, oldVal, newVal) -> loadCustomers(newVal.trim()));
 
+        countLabel.getStyleClass().add("sub-label");
+
         Button addCustomerBtn = new Button("➕  Add Customer");
         addCustomerBtn.getStyleClass().add("btn-primary");
         addCustomerBtn.setOnAction(e -> showCustomerDialog(null));
 
-        controlBar.getChildren().addAll(searchField, addCustomerBtn);
+        controlBar.getChildren().addAll(searchField, addCustomerBtn, countLabel);
 
         List<Customer> allCustomers = customerDAO.findAll();
         int totalCustomers = allCustomers.size();
@@ -139,6 +142,7 @@ public class CustomerView {
         } else {
             customerList.addAll(customerDAO.search(query));
         }
+        countLabel.setText(customerList.size() + " customer(s)");
     }
 
     private void showCustomerDialog(Customer customerToEdit) {
