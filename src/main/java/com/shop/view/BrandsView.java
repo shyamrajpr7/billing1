@@ -43,6 +43,7 @@ public class BrandsView {
 
         nameField.setPromptText("Brand name *");
         nameField.setPrefWidth(200);
+        nameField.setOnAction(e -> addBrand());
 
         manufacturerField.setPromptText("Manufacturer");
         manufacturerField.setPrefWidth(200);
