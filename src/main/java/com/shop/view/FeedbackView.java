@@ -99,7 +99,33 @@ public class FeedbackView {
         TableColumn<Feedback, String> dateCol = new TableColumn<>("Date");
         dateCol.setCellValueFactory(new PropertyValueFactory<>("createdAtLabel"));
 
-        table.getColumns().addAll(custCol, ratingCol, categoryCol, commentCol, dateCol);
+        TableColumn<Feedback, Void> actionCol = new TableColumn<>("Actions");
+        actionCol.setMaxWidth(70);
+        actionCol.setCellFactory(col -> new TableCell<Feedback, Void>() {
+            private final Button delBtn = new Button("🗑️");
+            {
+                delBtn.getStyleClass().addAll("btn-danger", "btn-small");
+                delBtn.setOnAction(e -> {
+                    Feedback f = getTableView().getItems().get(getIndex());
+                    Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                            "Delete this feedback entry?", ButtonType.YES, ButtonType.NO);
+                    confirm.showAndWait().ifPresent(resp -> {
+                        if (resp == ButtonType.YES) {
+                            feedbackDAO.delete(f.getId());
+                            refresh();
+                        }
+                    });
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : delBtn);
+            }
+        });
+
+        table.getColumns().addAll(custCol, ratingCol, categoryCol, commentCol, dateCol, actionCol);
         table.setItems(feedbackList);
         table.setPlaceholder(new Label("No feedback collected yet."));
 

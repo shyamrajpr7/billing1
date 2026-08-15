@@ -68,6 +68,19 @@ public class FeedbackDAO {
         return (int) feedbacks.countDocuments();
     }
 
+    public boolean delete(int id) {
+        try {
+            long removed = feedbacks.deleteOne(Filters.eq("_id", id)).getDeletedCount();
+            if (removed > 0) {
+                new ActivityLogDAO().log("FEEDBACK", "Deleted feedback entry #" + id);
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     private List<Feedback> mapRows(List<Document> docs) {
         Map<Integer, String> customerNames = new HashMap<>();
         for (Document doc : docs) {
