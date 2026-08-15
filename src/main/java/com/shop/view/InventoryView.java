@@ -28,7 +28,6 @@ public class InventoryView {
     private final SupplierDAO supplierDAO = new SupplierDAO();
     private final ObservableList<Product> productList = FXCollections.observableArrayList();
     private final TableView<Product> table = new TableView<>();
-    private final CheckBox lowStockCheck = new CheckBox("Low stock only");
 
     public Node getView() {
         VBox root = new VBox(16);
