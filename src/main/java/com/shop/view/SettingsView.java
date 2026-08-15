@@ -113,6 +113,18 @@ public class SettingsView {
     }
 
     private void saveSettings() {
+        try {
+            Double.parseDouble(taxField.getText().trim());
+            Integer.parseInt(lowStockField.getText().trim());
+        } catch (NumberFormatException ex) {
+            Alert alert = new Alert(Alert.AlertType.ERROR,
+                    "Default tax % must be a number and Low stock alert level must be a whole number.", ButtonType.OK);
+            alert.setHeaderText(null);
+            alert.setTitle("Invalid Value");
+            alert.showAndWait();
+            return;
+        }
+
         settingDAO.set(SettingDAO.KEY_STORE_NAME, storeNameField.getText().trim());
         settingDAO.set(SettingDAO.KEY_OWNER, ownerField.getText().trim());
         settingDAO.set(SettingDAO.KEY_ADDRESS, addressField.getText().trim());
